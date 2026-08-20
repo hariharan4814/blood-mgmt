@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     # Local apps
     "apps.accounts",
     "apps.common",
+    "apps.donors",
+    "apps.inventory",
 ]
 
 MIDDLEWARE = [
@@ -177,5 +179,7 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "apps.accounts.models.UserRole",
+        "BloodGroupEnum": "apps.donors.models.BloodGroup",
+        "BloodUnitStatusEnum": "apps.inventory.models.BloodUnitStatus",
     },
 }
