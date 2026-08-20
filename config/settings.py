@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.common",
     "apps.donors",
     "apps.inventory",
+    "apps.testing_qc",
 ]
 
 MIDDLEWARE = [
@@ -181,5 +182,6 @@ SPECTACULAR_SETTINGS = {
         "UserRoleEnum": "apps.accounts.models.UserRole",
         "BloodGroupEnum": "apps.donors.models.BloodGroup",
         "BloodUnitStatusEnum": "apps.inventory.models.BloodUnitStatus",
+        "ScreeningResultEnum": "apps.testing_qc.models.ScreeningResult",
     },
 }
