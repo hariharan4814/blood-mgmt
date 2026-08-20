@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.donors",
     "apps.inventory",
     "apps.testing_qc",
+    "apps.blood_requests",
 ]
 
 MIDDLEWARE = [
@@ -183,5 +184,7 @@ SPECTACULAR_SETTINGS = {
         "BloodGroupEnum": "apps.donors.models.BloodGroup",
         "BloodUnitStatusEnum": "apps.inventory.models.BloodUnitStatus",
         "ScreeningResultEnum": "apps.testing_qc.models.ScreeningResult",
+        "RequestUrgencyEnum": "apps.blood_requests.models.RequestUrgency",
+        "RequestStatusEnum": "apps.blood_requests.models.RequestStatus",
     },
 }
