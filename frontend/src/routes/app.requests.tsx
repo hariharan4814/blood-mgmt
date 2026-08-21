@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -9,23 +9,39 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState, TableSkeleton } from "@/components/common/StateBlocks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useAsync } from "@/hooks/useAsync";
-import { BLOOD_GROUPS, type BloodRequest } from "@/lib/types";
-import { requestService } from "@/services/requests/requestService";
+import { BLOOD_GROUPS, type BloodGroup, type BloodRequest, type Urgency } from "@/lib/types";
 import { useAuth } from "@/providers/AuthProvider";
+import { requestService, type BloodBankOption } from "@/services/requests/requestService";
 
 export const Route = createFileRoute("/app/requests")({
   head: () => ({
     meta: [
       { title: "Blood Requests — Blood Management System" },
-      { name: "description", content: "Raise, review and approve hospital blood requests with urgency-based prioritisation." },
+      {
+        name: "description",
+        content: "Raise, review and approve hospital blood requests with urgency-based prioritisation.",
+      },
       { property: "og:title", content: "Blood Requests — Blood Management System" },
       { property: "og:description", content: "Raise, review and approve hospital blood requests." },
       { name: "robots", content: "noindex" },
@@ -36,22 +52,117 @@ export const Route = createFileRoute("/app/requests")({
 
 function RequestsPage() {
   const { user } = useAuth();
-  const { data, loading } = useAsync(() => requestService.list());
+  const [requests, setRequests] = useState<BloodRequest[]>([]);
+  const [bloodBanks, setBloodBanks] = useState<BloodBankOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [tab, setTab] = useState("ALL");
-  const [rows, setRows] = useState<BloodRequest[] | null>(null);
-  const [decision, setDecision] = useState<{ id: string; status: BloodRequest["status"] } | null>(null);
+
+  const [decision, setDecision] = useState<{ id: string; status: "APPROVED" | "REJECTED" } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
 
-  const list = rows ?? data ?? [];
-  const filtered = useMemo(() => (tab === "ALL" ? list : list.filter((r) => r.status === tab)), [list, tab]);
+  // New Request Form State
+  const [newRequest, setNewRequest] = useState<{
+    bloodBankId: string;
+    bloodGroup: BloodGroup;
+    units: number;
+    urgency: Urgency;
+  }>({
+    bloodBankId: "",
+    bloodGroup: "O+",
+    units: 2,
+    urgency: "NORMAL",
+  });
+
   const isHospital = user?.role === "HOSPITAL_STAFF";
+  const isBloodBankAdmin = user?.role === "BLOOD_BANK_ADMIN" || user?.role === "SUPER_ADMIN";
+
+  const loadRequests = async () => {
+    setLoading(true);
+    try {
+      const data = await requestService.list();
+      setRequests(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load blood requests.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadBloodBanks = async () => {
+    const banks = await requestService.listBloodBanks();
+    setBloodBanks(banks);
+    if (banks.length > 0) {
+      const firstBank = banks[0];
+      if (firstBank) {
+        setNewRequest((prev) => ({ ...prev, bloodBankId: String(firstBank.id) }));
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadRequests();
+    loadBloodBanks();
+  }, []);
+
+  const filtered = useMemo(
+    () => (tab === "ALL" ? requests : requests.filter((r) => r.status === tab)),
+    [requests, tab],
+  );
+
+  const handleCreateRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRequest.bloodBankId) {
+      toast.error("Please select a target blood bank facility.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await requestService.create({
+        blood_bank: parseInt(newRequest.bloodBankId, 10),
+        blood_group: newRequest.bloodGroup,
+        units_needed: newRequest.units,
+        urgency: newRequest.urgency,
+      });
+
+      toast.success("Blood request submitted successfully.");
+      setCreateOpen(false);
+      await loadRequests();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create blood request.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const applyDecision = async () => {
     if (!decision) return;
-    await requestService.updateStatus(decision.id, decision.status);
-    setRows(list.map((r) => (r.id === decision.id ? { ...r, status: decision.status } : r)));
-    toast.success(`Request ${decision.id} marked as ${decision.status.toLowerCase()}.`);
-    setDecision(null);
+
+    setSubmitting(true);
+    try {
+      if (decision.status === "APPROVED") {
+        await requestService.approve(decision.id);
+        toast.success(`Request ${decision.id} approved. Matching units reserved.`);
+      } else {
+        if (!rejectionReason.trim()) {
+          toast.error("Please provide a rejection explanation.");
+          setSubmitting(false);
+          return;
+        }
+        await requestService.reject(decision.id, rejectionReason.trim());
+        toast.success(`Request ${decision.id} rejected.`);
+      }
+
+      setDecision(null);
+      setRejectionReason("");
+      await loadRequests();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update request.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -60,8 +171,8 @@ function RequestsPage() {
         title={isHospital ? "My blood requests" : "Incoming blood requests"}
         description={
           isHospital
-            ? "Raise new requests and follow their approval and dispatch status."
-            : "Review hospital demand and approve or reject against available stock."
+            ? "Raise new requests and follow their real-time approval and dispatch status."
+            : "Review clinical demand and approve reservations against available non-expired stock."
         }
         actions={
           isHospital ? (
@@ -75,61 +186,87 @@ function RequestsPage() {
                 <DialogHeader>
                   <DialogTitle>Raise a blood request</DialogTitle>
                   <DialogDescription>
-                    The request is routed to blood banks in your city. Mock submission only.
+                    Submit an emergency or scheduled blood request to a designated blood bank facility.
                   </DialogDescription>
                 </DialogHeader>
-                <form
-                  className="grid gap-4"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setCreateOpen(false);
-                    toast.success("Request submitted for blood bank approval.");
-                  }}
-                >
+
+                <form className="grid gap-4" onSubmit={handleCreateRequest}>
                   <div className="grid gap-2">
-                    <Label htmlFor="patient">Patient reference</Label>
-                    <Input id="patient" required placeholder="PT-2026-0142" />
+                    <Label htmlFor="target-bank">Target Blood Bank Facility</Label>
+                    <Select
+                      value={newRequest.bloodBankId}
+                      onValueChange={(val) => setNewRequest({ ...newRequest, bloodBankId: val })}
+                    >
+                      <SelectTrigger id="target-bank">
+                        <SelectValue placeholder="Select target facility" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bloodBanks.map((bank) => (
+                          <SelectItem key={bank.id} value={String(bank.id)}>
+                            {bank.name} ({bank.city}, {bank.state})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="grid gap-2">
-                      <Label htmlFor="group">Blood group</Label>
-                      <Select defaultValue="O+">
-                        <SelectTrigger id="group"><SelectValue /></SelectTrigger>
+                      <Label htmlFor="req-group">Blood group</Label>
+                      <Select
+                        value={newRequest.bloodGroup}
+                        onValueChange={(val) => setNewRequest({ ...newRequest, bloodGroup: val as BloodGroup })}
+                      >
+                        <SelectTrigger id="req-group">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
                           {BLOOD_GROUPS.map((g) => (
-                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                            <SelectItem key={g} value={g}>
+                              {g}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="units">Units</Label>
-                      <Input id="units" type="number" min={1} defaultValue={2} required />
+                      <Label htmlFor="req-units">Units Needed</Label>
+                      <Input
+                        id="req-units"
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={newRequest.units}
+                        onChange={(e) =>
+                          setNewRequest({ ...newRequest, units: Math.max(1, parseInt(e.target.value, 10) || 1) })
+                        }
+                        required
+                      />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-2">
-                      <Label htmlFor="urgency">Urgency</Label>
-                      <Select defaultValue="HIGH">
-                        <SelectTrigger id="urgency"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NORMAL">Normal</SelectItem>
-                          <SelectItem value="HIGH">High</SelectItem>
-                          <SelectItem value="CRITICAL">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="needed">Needed by</Label>
-                      <Input id="needed" type="date" required />
-                    </div>
-                  </div>
+
                   <div className="grid gap-2">
-                    <Label htmlFor="notes">Clinical notes</Label>
-                    <Textarea id="notes" rows={3} placeholder="Scheduled surgery, cross-match required." />
+                    <Label htmlFor="req-urgency">Clinical Urgency</Label>
+                    <Select
+                      value={newRequest.urgency}
+                      onValueChange={(val) => setNewRequest({ ...newRequest, urgency: val as Urgency })}
+                    >
+                      <SelectTrigger id="req-urgency">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NORMAL">Normal</SelectItem>
+                        <SelectItem value="HIGH">High</SelectItem>
+                        <SelectItem value="CRITICAL">Critical / Emergency</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <DialogFooter>
-                    <Button type="submit">Submit request</Button>
+
+                  <DialogFooter className="pt-2">
+                    <Button type="submit" disabled={submitting}>
+                      {submitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                      Submit request
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -153,20 +290,22 @@ function RequestsPage() {
           <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
           <div className="p-5">
-            <EmptyState title="No requests in this state" description="Requests will appear here as hospitals raise them." />
+            <EmptyState
+              title="No requests in this state"
+              description="Requests will appear here as hospitals submit them to blood banks."
+            />
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Request</TableHead>
-                <TableHead>Hospital</TableHead>
-                <TableHead>Patient</TableHead>
+                <TableHead>Facility / Staff</TableHead>
                 <TableHead>Group</TableHead>
                 <TableHead>Units</TableHead>
                 <TableHead>Urgency</TableHead>
                 <TableHead>Status</TableHead>
-                {!isHospital ? <TableHead className="text-right">Action</TableHead> : null}
+                {isBloodBankAdmin ? <TableHead className="text-right">Action</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -174,24 +313,34 @@ function RequestsPage() {
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs">{r.id}</TableCell>
                   <TableCell className="font-medium">{r.hospital}</TableCell>
-                  <TableCell>{r.patientRef}</TableCell>
-                  <TableCell className="font-semibold text-primary">{r.group}</TableCell>
+                  <TableCell className="font-bold text-primary">{r.group}</TableCell>
                   <TableCell>{r.units}</TableCell>
-                  <TableCell><StatusBadge status={r.urgency} /></TableCell>
-                  <TableCell><StatusBadge status={r.status} /></TableCell>
-                  {!isHospital ? (
+                  <TableCell>
+                    <StatusBadge status={r.urgency} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={r.status} />
+                  </TableCell>
+                  {isBloodBankAdmin ? (
                     <TableCell className="text-right">
                       {r.status === "PENDING" ? (
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" onClick={() => setDecision({ id: r.id, status: "APPROVED" })}>
+                          <Button
+                            size="sm"
+                            onClick={() => setDecision({ id: r.id, status: "APPROVED" })}
+                          >
                             Approve
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => setDecision({ id: r.id, status: "REJECTED" })}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDecision({ id: r.id, status: "REJECTED" })}
+                          >
                             Reject
                           </Button>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">No action needed</span>
+                        <span className="text-xs text-muted-foreground">Processed</span>
                       )}
                     </TableCell>
                   ) : null}
@@ -202,19 +351,39 @@ function RequestsPage() {
         )}
       </SectionCard>
 
+      {/* Decision Dialog */}
       <ConfirmDialog
         open={decision !== null}
-        onOpenChange={(open) => !open && setDecision(null)}
-        title={decision?.status === "APPROVED" ? "Approve this request?" : "Reject this request?"}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDecision(null);
+            setRejectionReason("");
+          }
+        }}
+        title={decision?.status === "APPROVED" ? "Approve this blood request?" : "Reject this blood request?"}
         description={
           decision?.status === "APPROVED"
-            ? "Matching units will be reserved from inventory and the hospital notified."
-            : "The hospital will be notified with your rejection reason."
+            ? "Approving this request will atomically reserve matching non-expired units from the blood bank inventory."
+            : "Please provide an explanation for rejecting this request."
         }
-        confirmLabel={decision?.status === "APPROVED" ? "Approve" : "Reject"}
+        confirmLabel={decision?.status === "APPROVED" ? "Confirm Approval" : "Confirm Rejection"}
         destructive={decision?.status === "REJECTED"}
         onConfirm={applyDecision}
-      />
+      >
+        {decision?.status === "REJECTED" ? (
+          <div className="mt-3 space-y-2 text-left">
+            <Label htmlFor="rej-reason">Rejection reason *</Label>
+            <Textarea
+              id="rej-reason"
+              rows={3}
+              placeholder="e.g. Insufficient stock of requested blood group at this time."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              required
+            />
+          </div>
+        ) : null}
+      </ConfirmDialog>
     </DashboardLayout>
   );
 }

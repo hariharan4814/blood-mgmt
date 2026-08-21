@@ -1,24 +1,35 @@
+import { useEffect, useState, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Camera, CheckCircle2, Loader2, Trash2, User, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SectionCard } from "@/components/common/SectionCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { TableSkeleton } from "@/components/common/StateBlocks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useAsync } from "@/hooks/useAsync";
-import { donorService } from "@/services/donors/donorService";
+import { ROLE_LABELS } from "@/lib/types";
+import { useAuth } from "@/providers/AuthProvider";
+import {
+  profileService,
+  type DonorDetails,
+  type DonorEligibility,
+  type UserProfile,
+} from "@/services/profile/profileService";
 
 export const Route = createFileRoute("/app/profile")({
   head: () => ({
     meta: [
-      { title: "My Donor Profile — Blood Management System" },
-      { name: "description", content: "Maintain your donor details, blood group, contact information and medical notes." },
-      { property: "og:title", content: "My Donor Profile — Blood Management System" },
-      { property: "og:description", content: "Maintain your donor details and eligibility information." },
+      { title: "My Profile — Blood Management System" },
+      {
+        name: "description",
+        content: "Maintain your profile details, contact information and eligibility status.",
+      },
+      { property: "og:title", content: "My Profile — Blood Management System" },
+      { property: "og:description", content: "Maintain your profile details and eligibility information." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -26,89 +37,393 @@ export const Route = createFileRoute("/app/profile")({
 });
 
 function ProfilePage() {
-  const { data, loading } = useAsync(() => donorService.getProfile());
+  const { user: authUser, refreshUser } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [donor, setDonor] = useState<DonorDetails | null>(null);
+  const [eligibility, setEligibility] = useState<DonorEligibility | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dob: "",
+    weightKg: "",
+  });
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const p = await profileService.getProfile();
+      setProfile(p);
+      setForm((prev) => ({
+        ...prev,
+        firstName: p.first_name || "",
+        lastName: p.last_name || "",
+        email: p.email || "",
+        phone: p.phone || "",
+      }));
+
+      if (p.role === "DONOR") {
+        const [d, elig] = await Promise.all([
+          profileService.getDonorDetails(),
+          profileService.getDonorEligibility(),
+        ]);
+        if (d) {
+          setDonor(d);
+          setForm((prev) => ({
+            ...prev,
+            dob: d.date_of_birth || "",
+            weightKg: d.weight_kg ? String(d.weight_kg) : "",
+          }));
+        }
+        if (elig) {
+          setEligibility(elig);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load profile.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const updated = await profileService.updateProfile({
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || null,
+      });
+
+      setProfile(updated);
+
+      if (profile?.role === "DONOR") {
+        const updatedDonor = await profileService.updateDonorDetails({
+          date_of_birth: form.dob || null,
+          weight_kg: form.weightKg ? parseFloat(form.weightKg) : null,
+        });
+        setDonor(updatedDonor);
+
+        const updatedElig = await profileService.getDonorEligibility();
+        if (updatedElig) setEligibility(updatedElig);
+      }
+
+      await refreshUser();
+      toast.success("Profile updated successfully.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update profile.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Profile picture must be smaller than 2 MB.");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const updated = await profileService.uploadProfileImage(file);
+      setProfile(updated);
+      await refreshUser();
+      toast.success("Profile picture updated.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload image.");
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    setUploadingImage(true);
+    try {
+      await profileService.deleteProfileImage();
+      if (profile) {
+        setProfile({ ...profile, profile_image: null, profile_image_url: null });
+      }
+      await refreshUser();
+      toast.success("Profile picture removed.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete image.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   return (
     <DashboardLayout title="My Profile">
-      <PageHeader title="Donor profile" description="Keep your details current so blood banks can reach you quickly." />
-      {loading || !data ? (
-        <SectionCard><TableSkeleton rows={6} cols={2} /></SectionCard>
+      <PageHeader
+        title={profile?.role === "DONOR" ? "Donor profile" : "User profile"}
+        description="Maintain your personal information, contact credentials, and profile picture."
+      />
+
+      {loading ? (
+        <SectionCard>
+          <TableSkeleton rows={6} cols={2} />
+        </SectionCard>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <SectionCard title="Personal details" description="Mock form — submissions are not persisted yet">
-            <form
-              className="grid gap-4 sm:grid-cols-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                toast.success("Profile updated.");
-              }}
-            >
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full name</Label>
-                <Input id="name" defaultValue={data.name} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue={data.email} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" defaultValue={data.phone} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="dob">Date of birth</Label>
-                <Input id="dob" type="date" defaultValue={data.dob} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="weight">Weight (kg)</Label>
-                <Input id="weight" type="number" defaultValue={data.weightKg} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="city">City</Label>
-                <Input id="city" defaultValue={data.city} />
-              </div>
-              <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea id="address" rows={2} defaultValue={data.address} />
-              </div>
-              <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="medical">Medical notes</Label>
-                <Textarea id="medical" rows={3} defaultValue={data.medicalNotes} />
-              </div>
-              <div className="sm:col-span-2">
-                <Button type="submit">Save changes</Button>
-              </div>
-            </form>
-          </SectionCard>
+          <div className="space-y-6">
+            {/* Avatar Section */}
+            <SectionCard title="Profile Picture" description="JPEG, PNG or WEBP (Max 2MB)">
+              <div className="flex flex-wrap items-center gap-6">
+                <Avatar className="size-20 border-2 border-border shadow-sm">
+                  {profile?.profile_image_url ? (
+                    <AvatarImage src={profile.profile_image_url} alt={profile.full_name} />
+                  ) : null}
+                  <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                    {profile?.first_name?.charAt(0) || profile?.username?.charAt(0) || <User className="size-8" />}
+                  </AvatarFallback>
+                </Avatar>
 
-          <SectionCard title="Donation summary">
-            <dl className="space-y-4 text-sm">
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Donor ID</dt>
-                <dd className="font-mono text-xs">{data.id}</dd>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    id="profile-image-input"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingImage}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploadingImage ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Camera className="mr-2 size-4" />
+                    )}
+                    {profile?.profile_image_url ? "Change photo" : "Upload photo"}
+                  </Button>
+
+                  {profile?.profile_image_url ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10"
+                      disabled={uploadingImage}
+                      onClick={handleDeleteImage}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Blood group</dt>
-                <dd className="text-lg font-bold text-primary">{data.group}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Total donations</dt>
-                <dd className="font-semibold">{data.totalDonations}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Last donation</dt>
-                <dd>{new Date(data.lastDonation).toLocaleDateString()}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Next eligible</dt>
-                <dd>{new Date(data.nextEligible).toLocaleDateString()}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Eligibility</dt>
-                <dd><StatusBadge status={data.eligible ? "ACTIVE" : "REVIEW"} /></dd>
-              </div>
-            </dl>
-          </SectionCard>
+            </SectionCard>
+
+            {/* Personal Details Form */}
+            <SectionCard title="Personal details" description="Update your contact credentials and identification">
+              <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSave}>
+                {error ? (
+                  <p className="rounded-md border border-destructive/30 bg-destructive/8 px-3 py-2 text-sm text-destructive sm:col-span-2">
+                    {error}
+                  </p>
+                ) : null}
+
+                <div className="grid gap-2">
+                  <Label htmlFor="firstName">First name</Label>
+                  <Input
+                    id="firstName"
+                    value={form.firstName}
+                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    disabled={saving}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="lastName">Last name</Label>
+                  <Input
+                    id="lastName"
+                    value={form.lastName}
+                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    disabled={saving}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    disabled={saving}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    disabled={saving}
+                    placeholder="+1 555-0199"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username (read-only)</Label>
+                  <Input id="username" value={profile?.username || ""} disabled className="bg-muted text-muted-foreground" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="role">Role (read-only)</Label>
+                  <div className="flex h-10 items-center">
+                    <StatusBadge status={profile?.role || "DONOR"} />
+                  </div>
+                </div>
+
+                {profile?.role === "DONOR" ? (
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor="dob">Date of birth</Label>
+                      <Input
+                        id="dob"
+                        type="date"
+                        value={form.dob}
+                        onChange={(e) => setForm({ ...form, dob: e.target.value })}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="weight">Weight (kg)</Label>
+                      <Input
+                        id="weight"
+                        type="number"
+                        step="0.1"
+                        min="30"
+                        max="250"
+                        value={form.weightKg}
+                        onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
+                        disabled={saving}
+                      />
+                    </div>
+                  </>
+                ) : null}
+
+                <div className="sm:col-span-2 pt-2">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                    Save changes
+                  </Button>
+                </div>
+              </form>
+            </SectionCard>
+          </div>
+
+          {/* Donor Summary & Eligibility Panel */}
+          {profile?.role === "DONOR" && donor ? (
+            <div className="space-y-6">
+              <SectionCard title="Donation Summary">
+                <dl className="space-y-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Donor ID</dt>
+                    <dd className="font-mono text-xs">DONOR-{donor.id}</dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Blood group</dt>
+                    <dd className="text-xl font-extrabold text-primary">{donor.blood_group}</dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Age</dt>
+                    <dd className="font-semibold">{donor.age ? `${donor.age} yrs` : "Not set"}</dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Weight</dt>
+                    <dd className="font-semibold">{donor.weight_kg ? `${donor.weight_kg} kg` : "Not set"}</dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Last donation</dt>
+                    <dd>
+                      {donor.last_donation_date
+                        ? new Date(donor.last_donation_date).toLocaleDateString()
+                        : "Never donated"}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-muted-foreground">Eligibility status</dt>
+                    <dd>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          eligibility?.is_eligible
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                        }`}
+                      >
+                        {eligibility?.is_eligible ? (
+                          <>
+                            <CheckCircle2 className="size-3.5" /> Eligible
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="size-3.5" /> Ineligible
+                          </>
+                        )}
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
+
+                {eligibility && !eligibility.is_eligible && eligibility.reasons.length > 0 ? (
+                  <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/50 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                    <p className="font-medium mb-1">Eligibility requirements:</p>
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      {eligibility.reasons.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </SectionCard>
+            </div>
+          ) : (
+            <SectionCard title="Account Details">
+              <dl className="space-y-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Account role</dt>
+                  <dd className="font-semibold">{profile ? ROLE_LABELS[profile.role] : ""}</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Verification status</dt>
+                  <dd>
+                    <StatusBadge status={profile?.is_verified ? "ACTIVE" : "PENDING"} />
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Member since</dt>
+                  <dd>{profile?.date_joined ? new Date(profile.date_joined).toLocaleDateString() : ""}</dd>
+                </div>
+              </dl>
+            </SectionCard>
+          )}
         </div>
       )}
     </DashboardLayout>
