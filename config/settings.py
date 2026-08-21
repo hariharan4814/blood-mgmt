@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.inventory",
     "apps.testing_qc",
     "apps.blood_requests",
+    "apps.donations",
 ]
 
 MIDDLEWARE = [
@@ -186,5 +187,7 @@ SPECTACULAR_SETTINGS = {
         "ScreeningResultEnum": "apps.testing_qc.models.ScreeningResult",
         "RequestUrgencyEnum": "apps.blood_requests.models.RequestUrgency",
         "RequestStatusEnum": "apps.blood_requests.models.RequestStatus",
+        "CampStatusEnum": "apps.donations.models.CampStatus",
+        "CampRegistrationStatusEnum": "apps.donations.models.CampRegistrationStatus",
     },
 }
