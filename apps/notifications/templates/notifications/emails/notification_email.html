@@ -1,0 +1,26 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block title %}{{ title|default:"System Notification" }} - Blood Management System{% endblock %}
+
+{% block content %}
+<h2 class="email-heading">{{ title }}</h2>
+
+<p class="email-text">{{ message }}</p>
+
+{% if details %}
+<div class="info-card">
+    {% for key, val in details.items %}
+    <div class="info-row">
+        <span class="info-label">{{ key }}:</span>
+        <span class="info-value">{{ val }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if action_url %}
+<div class="btn-container">
+    <a href="{{ action_url }}" class="btn-primary">{{ action_label|default:"View Details" }}</a>
+</div>
+{% endif %}
+{% endblock %}

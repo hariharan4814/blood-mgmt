@@ -1,0 +1,52 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block title %}Donation Camp Update - Blood Management System{% endblock %}
+
+{% block content %}
+<h2 class="email-heading">{{ title|default:"Donation Camp Notification" }}</h2>
+
+<p class="email-text">{{ message }}</p>
+
+<div class="info-card">
+    <div class="info-row">
+        <span class="info-label">Camp Name:</span>
+        <span class="info-value"><strong>{{ camp_name }}</strong></span>
+    </div>
+    {% if venue %}
+    <div class="info-row">
+        <span class="info-label">Venue / Location:</span>
+        <span class="info-value">{{ venue }}</span>
+    </div>
+    {% endif %}
+    {% if start_date and end_date %}
+    <div class="info-row">
+        <span class="info-label">Dates:</span>
+        <span class="info-value">{{ start_date }} to {{ end_date }}</span>
+    </div>
+    {% endif %}
+    {% if organizer_name %}
+    <div class="info-row">
+        <span class="info-label">Organizer:</span>
+        <span class="info-value">{{ organizer_name }}</span>
+    </div>
+    {% endif %}
+    {% if blood_bank_name %}
+    <div class="info-row">
+        <span class="info-label">Supporting Blood Bank:</span>
+        <span class="info-value">{{ blood_bank_name }}</span>
+    </div>
+    {% endif %}
+    {% if registration_status %}
+    <div class="info-row">
+        <span class="info-label">Registration Status:</span>
+        <span class="info-value"><span class="badge badge-info">{{ registration_status }}</span></span>
+    </div>
+    {% endif %}
+</div>
+
+{% if action_url %}
+<div class="btn-container">
+    <a href="{{ action_url }}" class="btn-primary">{{ action_label|default:"View Camp Details" }}</a>
+</div>
+{% endif %}
+{% endblock %}

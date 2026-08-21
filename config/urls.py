@@ -46,6 +46,9 @@ urlpatterns = [
     # Blood Donation Management APIs
     path("api/donations/", include("apps.donations.donation_urls")),
 
+    # Notifications & Communications APIs
+    path("api/notifications/", include("apps.notifications.urls")),
+
     # OpenAPI Schema & Interactive Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

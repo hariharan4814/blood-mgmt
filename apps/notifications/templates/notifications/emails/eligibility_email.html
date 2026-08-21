@@ -1,0 +1,50 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block title %}Donor Eligibility Update - Blood Management System{% endblock %}
+
+{% block content %}
+<h2 class="email-heading">{{ title|default:"Donor Eligibility Status" }}</h2>
+
+<p class="email-text">{{ message }}</p>
+
+<div class="info-card">
+    <div class="info-row">
+        <span class="info-label">Donor Name:</span>
+        <span class="info-value">{{ donor_name }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Eligibility Status:</span>
+        <span class="info-value">
+            {% if is_eligible %}
+            <span class="badge badge-success">Eligible to Donate</span>
+            {% else %}
+            <span class="badge badge-urgent">Temporarily Ineligible</span>
+            {% endif %}
+        </span>
+    </div>
+    {% if next_eligible_date %}
+    <div class="info-row">
+        <span class="info-label">Next Eligible Date:</span>
+        <span class="info-value"><strong>{{ next_eligible_date }}</strong></span>
+    </div>
+    {% endif %}
+    {% if reasons %}
+    <div class="info-row">
+        <span class="info-label">Notice Details:</span>
+        <span class="info-value">
+            <ul style="margin: 4px 0 0 16px; padding: 0;">
+                {% for reason in reasons %}
+                <li>{{ reason }}</li>
+                {% endfor %}
+            </ul>
+        </span>
+    </div>
+    {% endif %}
+</div>
+
+{% if action_url %}
+<div class="btn-container">
+    <a href="{{ action_url }}" class="btn-primary">{{ action_label|default:"Check Donation Centers" }}</a>
+</div>
+{% endif %}
+{% endblock %}

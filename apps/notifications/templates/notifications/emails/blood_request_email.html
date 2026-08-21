@@ -1,0 +1,54 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block title %}Blood Request Update - Blood Management System{% endblock %}
+
+{% block content %}
+<h2 class="email-heading">{{ title|default:"Blood Request Notification" }}</h2>
+
+<p class="email-text">{{ message }}</p>
+
+<div class="info-card">
+    <div class="info-row">
+        <span class="info-label">Request ID:</span>
+        <span class="info-value">#{{ request_id }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Patient Name:</span>
+        <span class="info-value">{{ patient_name }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Blood Group:</span>
+        <span class="info-value"><strong>{{ blood_group }}</strong></span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Units Requested:</span>
+        <span class="info-value">{{ units_requested }} unit(s)</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Urgency:</span>
+        <span class="info-value">
+            <span class="badge {% if urgency == 'EMERGENCY' or urgency == 'CRITICAL' %}badge-urgent{% else %}badge-info{% endif %}">
+                {{ urgency }}
+            </span>
+        </span>
+    </div>
+    {% if status %}
+    <div class="info-row">
+        <span class="info-label">Status:</span>
+        <span class="info-value"><span class="badge badge-success">{{ status }}</span></span>
+    </div>
+    {% endif %}
+    {% if hospital_name %}
+    <div class="info-row">
+        <span class="info-label">Hospital:</span>
+        <span class="info-value">{{ hospital_name }}</span>
+    </div>
+    {% endif %}
+</div>
+
+{% if action_url %}
+<div class="btn-container">
+    <a href="{{ action_url }}" class="btn-primary">{{ action_label|default:"View Request Details" }}</a>
+</div>
+{% endif %}
+{% endblock %}

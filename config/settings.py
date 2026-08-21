@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.testing_qc",
     "apps.blood_requests",
     "apps.donations",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -69,7 +70,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -173,6 +174,22 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
 }
 
+# Email / SMTP Configuration
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend" if not DEBUG else "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    "Blood Management System <noreply@bloodmgmt.org>"
+)
+
 # OpenAPI Documentation (drf-spectacular) Settings
 SPECTACULAR_SETTINGS = {
     "TITLE": "Blood Management System API",
@@ -189,5 +206,7 @@ SPECTACULAR_SETTINGS = {
         "RequestStatusEnum": "apps.blood_requests.models.RequestStatus",
         "CampStatusEnum": "apps.donations.models.CampStatus",
         "CampRegistrationStatusEnum": "apps.donations.models.CampRegistrationStatus",
+        "NotificationTypeEnum": "apps.notifications.models.NotificationType",
+        "EmailRecipientTypeEnum": "apps.notifications.models.EmailRecipientType",
     },
 }
