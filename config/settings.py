@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.blood_requests",
     "apps.donations",
     "apps.notifications",
+    "apps.emergency_sos",
 ]
 
 MIDDLEWARE = [
@@ -216,5 +217,6 @@ SPECTACULAR_SETTINGS = {
         "CampRegistrationStatusEnum": "apps.donations.models.CampRegistrationStatus",
         "NotificationTypeEnum": "apps.notifications.models.NotificationType",
         "EmailRecipientTypeEnum": "apps.notifications.models.EmailRecipientType",
+        "SOSStatusEnum": "apps.emergency_sos.models.SOSStatus",
     },
 }

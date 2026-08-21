@@ -1,0 +1,61 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block title %}🚨 EMERGENCY: Critical {{ blood_group }} Blood Shortage - Blood Management System{% endblock %}
+
+{% block content %}
+<div style="background-color: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
+    <span style="color: #b91c1c; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+        🚨 URGENT EMERGENCY BLOOD ALERT
+    </span>
+</div>
+
+<h2 class="email-heading" style="color: #991b1b;">{{ title }}</h2>
+
+<p class="email-text" style="font-size: 16px; line-height: 1.6; color: #1e293b;">
+    {{ message }}
+</p>
+
+<div class="info-card" style="border-left-color: #b91c1c; background-color: #fff1f2;">
+    <div class="info-row">
+        <span class="info-label">Required Blood Group:</span>
+        <span class="info-value" style="font-size: 18px; color: #991b1b; font-weight: 700;">{{ blood_group }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Clinical Urgency:</span>
+        <span class="info-value"><span class="badge badge-urgent">{{ urgency|default:"CRITICAL" }}</span></span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Units Needed:</span>
+        <span class="info-value"><strong>{{ shortage_units|default:units_needed }} unit(s)</strong></span>
+    </div>
+    {% if blood_bank_name %}
+    <div class="info-row">
+        <span class="info-label">Receiving Blood Bank:</span>
+        <span class="info-value"><strong>{{ blood_bank_name }}</strong></span>
+    </div>
+    {% endif %}
+    {% if blood_bank_city and blood_bank_state %}
+    <div class="info-row">
+        <span class="info-label">Facility Location:</span>
+        <span class="info-value">{{ blood_bank_city }}, {{ blood_bank_state }}</span>
+    </div>
+    {% endif %}
+    {% if blood_bank_contact %}
+    <div class="info-row">
+        <span class="info-label">Direct Contact:</span>
+        <span class="info-value" style="color: #991b1b; font-weight: 700;">{{ blood_bank_contact }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<p class="email-text" style="font-size: 14px; color: #475569;">
+    <strong>Why did you receive this alert?</strong><br>
+    You are a registered, medically eligible blood donor in our network with a compatible blood group (<strong>{{ donor_blood_group|default:"Compatible" }}</strong>). If you are able to donate blood, please contact the facility directly or report to the nearest authorized donation station.
+</p>
+
+{% if action_url %}
+<div class="btn-container">
+    <a href="{{ action_url }}" class="btn-primary" style="background-color: #b91c1c;">Respond to Emergency Alert</a>
+</div>
+{% endif %}
+{% endblock %}

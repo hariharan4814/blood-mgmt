@@ -54,6 +54,9 @@ urlpatterns = [
     # Notifications & Communications APIs
     path("api/notifications/", include("apps.notifications.urls")),
 
+    # Emergency SOS & Blood Broadcast APIs
+    path("api/sos/", include("apps.emergency_sos.urls")),
+
     # OpenAPI Schema & Interactive Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
