@@ -1,5 +1,18 @@
+import os
+import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+
+def user_profile_image_path(instance, filename):
+    """
+    Generates a unique and secure upload path for user profile images.
+    Example: profile_images/user_1_a1b2c3d4.jpg
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    unique_id = uuid.uuid4().hex[:8]
+    user_id = instance.id or "new"
+    return f"profile_images/user_{user_id}_{unique_id}{ext}"
 
 
 class UserRole(models.TextChoices):
@@ -27,6 +40,12 @@ class User(AbstractUser):
         null=True,
         help_text="Primary contact phone number."
     )
+    profile_image = models.ImageField(
+        upload_to=user_profile_image_path,
+        null=True,
+        blank=True,
+        help_text="User profile display picture."
+    )
     is_verified = models.BooleanField(
         default=False,
         help_text="Designates whether the user's email/account has been verified."
@@ -40,6 +59,11 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+
+    @property
+    def full_name(self):
+        name = f"{self.first_name} {self.last_name}".strip()
+        return name if name else self.username
 
     @property
     def is_super_admin(self):
@@ -60,3 +84,4 @@ class User(AbstractUser):
     @property
     def is_donor(self):
         return self.role == UserRole.DONOR
+

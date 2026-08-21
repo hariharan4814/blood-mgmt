@@ -127,6 +127,14 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Media files (User Profile Uploads)
+# https://docs.djangoproject.com/en/5.1/topics/files/
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# Maximum upload file size in bytes (2 MB for profile images)
+MAX_PROFILE_IMAGE_SIZE = 2 * 1024 * 1024
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -23,7 +23,7 @@ class UserAdmin(BaseUserAdmin):
         (None, {"fields": ("username", "password")}),
         (
             "Personal Information",
-            {"fields": ("first_name", "last_name", "email", "phone")},
+            {"fields": ("first_name", "last_name", "email", "phone", "profile_image")},
         ),
         (
             "Role & Verification",
