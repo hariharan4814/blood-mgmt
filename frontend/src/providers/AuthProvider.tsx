@@ -1,20 +1,24 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { authService, type AuthUser, type LoginPayload } from "@/services/auth/authService";
-
-/**
- * MOCK SESSION STORE.
- * Later: keep the JWT access token here (memory) + refresh token in an
- * httpOnly cookie, and hydrate `user` from GET /api/auth/me.
- */
-const STORAGE_KEY = "bms.session";
+import { clearTokens, hasTokens } from "@/lib/tokens";
+import type { Role } from "@/lib/types";
+import {
+  authService,
+  type AuthUser,
+  type LoginPayload,
+  type RegisterPayload,
+} from "@/services/auth/authService";
 
 interface AuthContextValue {
   user: AuthUser | null;
+  role: Role | null;
+  isAuthenticated: boolean;
   hydrated: boolean;
   loading: boolean;
   login: (payload: LoginPayload) => Promise<AuthUser>;
+  register: (payload: RegisterPayload) => Promise<AuthUser>;
   logout: () => void;
-  setUser: (user: AuthUser) => void;
+  refreshUser: () => Promise<AuthUser | null>;
+  setUser: (user: AuthUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -24,39 +28,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Initialize auth state by restoring session from Django backend if tokens exist
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setUserState(JSON.parse(raw) as AuthUser);
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
+    let mounted = true;
+
+    async function initAuth() {
+      if (hasTokens()) {
+        try {
+          const currentUser = await authService.getCurrentUser();
+          if (mounted) {
+            setUserState(currentUser);
+          }
+        } catch {
+          if (mounted) {
+            clearTokens();
+            setUserState(null);
+          }
+        }
+      }
+      if (mounted) {
+        setHydrated(true);
+      }
     }
-    setHydrated(true);
+
+    initAuth();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      role: user?.role ?? null,
+      isAuthenticated: Boolean(user),
       hydrated,
       loading,
       login: async (payload) => {
         setLoading(true);
         try {
-          const { user: next } = await authService.login(payload);
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-          setUserState(next);
-          return next;
+          const { user: loggedInUser } = await authService.login(payload);
+          setUserState(loggedInUser);
+          return loggedInUser;
+        } finally {
+          setLoading(false);
+        }
+      },
+      register: async (payload) => {
+        setLoading(true);
+        try {
+          const { user: registeredUser } = await authService.register(payload);
+          return registeredUser;
         } finally {
           setLoading(false);
         }
       },
       logout: () => {
-        window.localStorage.removeItem(STORAGE_KEY);
+        authService.logout();
         setUserState(null);
       },
-      setUser: (next) => {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        setUserState(next);
+      refreshUser: async () => {
+        try {
+          const updatedUser = await authService.getCurrentUser();
+          setUserState(updatedUser);
+          return updatedUser;
+        } catch {
+          return null;
+        }
+      },
+      setUser: (nextUser) => {
+        setUserState(nextUser);
       },
     }),
     [user, hydrated, loading],

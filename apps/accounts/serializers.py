@@ -151,6 +151,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Custom JWT serializer that embeds user information in token claims
     and returns user payload in the response body.
+    Supports authenticating via either username or email address.
     """
     @classmethod
     def get_token(cls, user):
@@ -163,6 +164,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        # Allow logging in with either username or email
+        username_or_email = attrs.get("username")
+        if username_or_email and "@" in username_or_email:
+            user_by_email = User.objects.filter(email__iexact=username_or_email.strip()).first()
+            if user_by_email:
+                attrs["username"] = user_by_email.username
+
         data = super().validate(attrs)
         data["user"] = {
             "id": self.user.id,

@@ -179,6 +179,18 @@ class AuthenticationAPITests(TestCase):
         self.assertTrue(data["user"]["is_verified"])
         self.assertNotIn("password", data["user"])
 
+    def test_login_with_email_successful(self):
+        payload = {
+            "username": "testuser@example.com",
+            "password": "StrongPassword123!"
+        }
+        response = self.client.post(self.login_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("access", data)
+        self.assertEqual(data["user"]["username"], "testuser")
+        self.assertEqual(data["user"]["email"], "testuser@example.com")
+
     def test_login_invalid_credentials(self):
         payload = {
             "username": "testuser",

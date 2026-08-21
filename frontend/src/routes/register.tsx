@@ -39,7 +39,7 @@ function RegisterPage() {
   const navigate = useNavigate();
   const [role, setRole] = useState<PublicRole>("DONOR");
   const [submitting, setSubmitting] = useState(false);
-  type Errors = Partial<Record<"name" | "email" | "password" | "confirm" | "hospital", string>>;
+  type Errors = Partial<Record<"name" | "email" | "password" | "confirm" | "hospital" | "general", string>>;
   const [errors, setErrors] = useState<Errors>({});
   const [form, setForm] = useState({
     name: "",
@@ -56,7 +56,6 @@ function RegisterPage() {
   const set = (key: keyof typeof form) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  // MOCK SUBMIT — replace with POST /api/auth/register.
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: Errors = {};
@@ -72,17 +71,26 @@ function RegisterPage() {
     setSubmitting(true);
     try {
       await authService.register({
-        name: form.name,
-        email: form.email,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
         password: form.password,
+        password_confirm: form.confirm,
         role,
+        blood_group: form.group,
+        city: form.city.trim(),
+        hospital: form.hospital.trim(),
+        staffId: form.staffId.trim(),
       });
       toast.success(
         role === "DONOR"
-          ? "Donor account created. You can sign in now."
-          : "Request submitted. A blood bank admin will verify your hospital account.",
+          ? "Donor account created successfully! You can sign in now."
+          : "Hospital staff account registered! You can sign in now.",
       );
       navigate({ to: "/login" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed. Please check your details.";
+      setErrors({ general: msg });
     } finally {
       setSubmitting(false);
     }
@@ -101,8 +109,20 @@ function RegisterPage() {
       </Tabs>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-5">
+        {errors.general ? (
+          <p className="rounded-md border border-destructive/30 bg-destructive/8 px-3 py-2 text-sm text-destructive">
+            {errors.general}
+          </p>
+        ) : null}
+
         <Field label="Full name" id="name" error={errors.name}>
-          <Input id="name" value={form.name} onChange={(e) => set("name")(e.target.value)} />
+          <Input
+            id="name"
+            value={form.name}
+            onChange={(e) => set("name")(e.target.value)}
+            disabled={submitting}
+            required
+          />
         </Field>
         <Field label="Email" id="email" error={errors.email}>
           <Input
@@ -110,16 +130,23 @@ function RegisterPage() {
             type="email"
             value={form.email}
             onChange={(e) => set("email")(e.target.value)}
+            disabled={submitting}
+            required
           />
         </Field>
         <Field label="Phone" id="phone">
-          <Input id="phone" value={form.phone} onChange={(e) => set("phone")(e.target.value)} />
+          <Input
+            id="phone"
+            value={form.phone}
+            onChange={(e) => set("phone")(e.target.value)}
+            disabled={submitting}
+          />
         </Field>
 
         {role === "DONOR" ? (
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Blood group" id="group">
-              <Select value={form.group} onValueChange={set("group")}>
+              <Select value={form.group} onValueChange={set("group")} disabled={submitting}>
                 <SelectTrigger id="group">
                   <SelectValue />
                 </SelectTrigger>
@@ -133,7 +160,12 @@ function RegisterPage() {
               </Select>
             </Field>
             <Field label="City" id="city">
-              <Input id="city" value={form.city} onChange={(e) => set("city")(e.target.value)} />
+              <Input
+                id="city"
+                value={form.city}
+                onChange={(e) => set("city")(e.target.value)}
+                disabled={submitting}
+              />
             </Field>
           </div>
         ) : (
@@ -143,6 +175,7 @@ function RegisterPage() {
                 id="hospital"
                 value={form.hospital}
                 onChange={(e) => set("hospital")(e.target.value)}
+                disabled={submitting}
               />
             </Field>
             <Field label="Staff ID" id="staffId">
@@ -150,6 +183,7 @@ function RegisterPage() {
                 id="staffId"
                 value={form.staffId}
                 onChange={(e) => set("staffId")(e.target.value)}
+                disabled={submitting}
               />
             </Field>
           </div>
@@ -162,6 +196,8 @@ function RegisterPage() {
               type="password"
               value={form.password}
               onChange={(e) => set("password")(e.target.value)}
+              disabled={submitting}
+              required
             />
           </Field>
           <Field label="Confirm password" id="confirm" error={errors.confirm}>
@@ -170,6 +206,8 @@ function RegisterPage() {
               type="password"
               value={form.confirm}
               onChange={(e) => set("confirm")(e.target.value)}
+              disabled={submitting}
+              required
             />
           </Field>
         </div>

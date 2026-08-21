@@ -7,14 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ROLE_LABELS, type Role } from "@/lib/types";
+import { ROLE_LABELS } from "@/lib/types";
 import { useAuth } from "@/providers/AuthProvider";
 
 export const Route = createFileRoute("/login")({
@@ -32,34 +25,32 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-const DEMO_ACCOUNTS: Record<Role, string> = {
-  SUPER_ADMIN: "meera@bms.health",
-  BLOOD_BANK_ADMIN: "arun@citybank.health",
-  HOSPITAL_STAFF: "kavya@apollo.health",
-  LAB_TECHNICIAN: "ravi@citybank.health",
-  DONOR: "hari@donor.health",
-};
-
 function LoginPage() {
   const navigate = useNavigate();
   const { login, loading } = useAuth();
-  const [role, setRole] = useState<Role>("BLOOD_BANK_ADMIN");
-  const [email, setEmail] = useState(DEMO_ACCOUNTS.BLOOD_BANK_ADMIN);
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // MOCK SUBMIT — replace with POST /api/auth/login once the backend exists.
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!email.trim() || !password.trim()) {
-      setError("Enter both email and password to continue.");
+
+    const loginIdentifier = email.trim();
+    if (!loginIdentifier || !password.trim()) {
+      setError("Enter both email/username and password to continue.");
       return;
     }
-    const user = await login({ email: email.trim(), password, role, remember });
-    toast.success(`Signed in as ${ROLE_LABELS[user.role]}`);
-    navigate({ to: "/app/dashboard" });
+
+    try {
+      const user = await login({ email: loginIdentifier, password, remember });
+      toast.success(`Signed in as ${ROLE_LABELS[user.role]}`);
+      navigate({ to: "/app/dashboard" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid credentials. Please try again.";
+      setError(msg);
+    }
   };
 
   return (
@@ -73,7 +64,9 @@ function LoginPage() {
             autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@hospital.health"
+            placeholder="you@hospital.health or username"
+            disabled={loading}
+            required
           />
         </div>
 
@@ -85,33 +78,9 @@ function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+            required
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="role">Demo role (frontend only)</Label>
-          <Select
-            value={role}
-            onValueChange={(v) => {
-              const next = v as Role;
-              setRole(next);
-              setEmail(DEMO_ACCOUNTS[next]);
-            }}
-          >
-            <SelectTrigger id="role">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-                <SelectItem key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Temporary selector for demonstration. The real role will come from the JWT claims.
-          </p>
         </div>
 
         <div className="flex items-center justify-between">
