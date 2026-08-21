@@ -17,7 +17,7 @@ import { ROLE_NAV } from "@/lib/navigation";
 import { ROLE_LABELS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
-import { notifications } from "@/services/mock/data";
+import { notificationService } from "@/services/notifications/notificationService";
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
@@ -62,7 +62,11 @@ export function DashboardLayout({
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const unread = notifications.filter((n) => !n.read).length;
+  const [unread, setUnread] = useState(0);
+
+  useState(() => {
+    notificationService.getUnreadCount().then((count) => setUnread(count)).catch(() => {});
+  });
 
   return (
     <div className="flex min-h-screen bg-background">
