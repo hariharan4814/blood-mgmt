@@ -114,6 +114,62 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
+class UserAdminCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Super Admin user creation (POST /api/users/).
+    Supports creating accounts for all roles (SUPER_ADMIN, BLOOD_BANK_ADMIN, LAB_TECHNICIAN, HOSPITAL_STAFF, DONOR).
+    """
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={"input_type": "password"},
+        help_text="Initial password meeting system complexity requirements."
+    )
+    role = serializers.ChoiceField(
+        choices=UserRole.choices,
+        default=UserRole.DONOR,
+        help_text="Assigned platform role."
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "password",
+            "role",
+            "phone",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_verified",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value.strip()).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value.strip()
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value.strip()).exists():
+            raise serializers.ValidationError("A user with this email address already exists.")
+        return value.strip().lower()
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User.objects.create_user(
+            password=password,
+            **validated_data
+        )
+        return user
+
+
 class UserAdminUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for Super Admin user updates (PATCH /api/users/{id}/).

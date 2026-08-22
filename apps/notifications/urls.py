@@ -3,11 +3,13 @@ from django.urls import path
 from .views import (
     EmailRecipientDetailView,
     EmailRecipientListCreateView,
+    EmailStatusView,
     NotificationDetailView,
     NotificationListView,
     NotificationMarkAllReadView,
     NotificationMarkReadView,
     NotificationUnreadCountView,
+    TestEmailView,
 )
 
 urlpatterns = [
@@ -18,7 +20,9 @@ urlpatterns = [
     path("<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
     path("<int:pk>/mark-read/", NotificationMarkReadView.as_view(), name="notification-mark-read"),
 
-    # Administrative Email Recipient Management
+    # Administrative Email Management
+    path("email-status/", EmailStatusView.as_view(), name="email-status"),
+    path("test-email/", TestEmailView.as_view(), name="test-email"),
     path("recipients/", EmailRecipientListCreateView.as_view(), name="email-recipient-list-create"),
     path("recipients/<int:pk>/", EmailRecipientDetailView.as_view(), name="email-recipient-detail"),
 ]

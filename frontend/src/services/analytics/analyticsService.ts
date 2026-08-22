@@ -5,7 +5,7 @@ import {
   sosResponseRate,
   systemActivity,
 } from "../mock/data";
-import type { BloodGroup, BloodStock, User } from "@/lib/types";
+import type { BloodGroup, BloodStock, Role, User } from "@/lib/types";
 
 export interface BloodBankListItem {
   id: string;
@@ -38,6 +38,59 @@ export interface BackendInventorySummary {
   testing_units: number;
   expired_units: number;
   discarded_units: number;
+}
+
+export interface BackendUser {
+  id: number | string;
+  username: string;
+  email: string;
+  role: Role;
+  phone?: string;
+  is_verified?: boolean;
+  first_name?: string;
+  last_name?: string;
+  is_active?: boolean;
+  date_joined?: string;
+  name?: string;
+  organization?: string;
+  status?: "ACTIVE" | "SUSPENDED";
+  joinedAt?: string;
+}
+
+export function mapBackendUser(u: BackendUser | User | Record<string, any>): User {
+  const first = (u as any).first_name;
+  const last = (u as any).last_name;
+  const fullName = [first, last].filter(Boolean).join(" ").trim();
+  const name = fullName || (u as any).name || (u as any).username || "User";
+  const role = (u as any).role || "DONOR";
+  const organization =
+    (u as any).organization ||
+    (role === "SUPER_ADMIN"
+      ? "National Blood Authority"
+      : role === "BLOOD_BANK_ADMIN"
+        ? "Blood Bank Facility"
+        : role === "HOSPITAL_STAFF"
+          ? "Partner Hospital"
+          : role === "LAB_TECHNICIAN"
+            ? "Diagnostic Testing Lab"
+            : "Voluntary Donor");
+
+  const status: "ACTIVE" | "SUSPENDED" =
+    (u as any).status === "ACTIVE" || (u as any).status === "SUSPENDED"
+      ? (u as any).status
+      : (u as any).is_active === false
+        ? "SUSPENDED"
+        : "ACTIVE";
+
+  return {
+    id: typeof u.id === "number" ? `USR-${u.id}` : (String(u.id) || "USR-1"),
+    name,
+    email: u.email || `${(u as any).username || "user"}@example.com`,
+    role,
+    organization,
+    status,
+    joinedAt: (u as any).date_joined || (u as any).joinedAt || new Date().toISOString(),
+  };
 }
 
 export const analyticsService = {
@@ -97,11 +150,13 @@ export const analyticsService = {
    */
   listUsers: async (): Promise<User[]> => {
     try {
-      const res = await request<{ results?: User[] } | User[]>("/api/users/");
-      return Array.isArray(res) ? res : res.results || [];
+      const res = await request<{ results?: BackendUser[] } | BackendUser[]>("/api/users/");
+      const list = Array.isArray(res) ? res : res.results || [];
+      return list.map(mapBackendUser);
     } catch {
       const { users } = await import("../mock/data");
-      return mockRequest(users);
+      const list = await mockRequest(users);
+      return list.map(mapBackendUser);
     }
   },
 

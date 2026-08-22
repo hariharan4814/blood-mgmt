@@ -20,6 +20,24 @@ export interface BackendDonation {
   created_at: string;
 }
 
+export interface BackendDonorProfile {
+  id: number;
+  user_id: number;
+  username: string;
+  email: string;
+  phone: string;
+  blood_group: BloodGroup;
+  date_of_birth: string;
+  age: number;
+  weight_kg: string | number;
+  latitude: string | number;
+  longitude: string | number;
+  last_donation_date: string | null;
+  is_eligible: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export const donorService = {
   /**
    * Fetch full donor profile combining personal metadata and donor attributes.
@@ -36,8 +54,8 @@ export const donorService = {
 
       return {
         id: d ? `DONOR-${d.id}` : `DONOR-${p.id}`,
-        name: p.full_name || `${p.first_name} ${p.last_name}`.trim() || p.username,
-        email: p.email,
+        name: p.full_name || `${p.first_name} ${p.last_name}`.trim() || p.username || "Registered Donor",
+        email: p.email || "donor@example.com",
         phone: p.phone || "",
         dob: d?.date_of_birth || "1995-05-15",
         weightKg: d?.weight_kg || 65,
@@ -143,10 +161,47 @@ export const donorService = {
    */
   listDonors: async (): Promise<User[]> => {
     try {
-      const res = await request<{ results?: User[] } | User[]>("/api/users/?role=DONOR");
-      return Array.isArray(res) ? res : res.results || [];
+      const res = await request<
+        { results?: BackendDonorProfile[] } | BackendDonorProfile[]
+      >("/api/donors/");
+      const list = Array.isArray(res) ? res : res.results || [];
+      if (list.length > 0) {
+        return list.map((d) => ({
+          id: `DONOR-${d.id}`,
+          name: d.username ? d.username.charAt(0).toUpperCase() + d.username.slice(1) : "Registered Donor",
+          email: d.email || `${d.username || "donor"}@example.com`,
+          role: "DONOR" as const,
+          organization: `Blood Group ${d.blood_group || "O+"}`,
+          status: "ACTIVE" as const,
+          joinedAt: d.created_at || new Date().toISOString(),
+        }));
+      }
     } catch {
-      return [];
+      // fallback
     }
+
+    try {
+      const res = await request<{ results?: any[] } | any[]>("/api/users/?role=DONOR");
+      const list = Array.isArray(res) ? res : res.results || [];
+      if (list.length > 0) {
+        return list.map((u) => {
+          const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+          return {
+            id: `USR-${u.id}`,
+            name: fullName || u.username || "Registered Donor",
+            email: u.email || `${u.username || "donor"}@example.com`,
+            role: "DONOR" as const,
+            organization: "Voluntary Donor",
+            status: u.is_active === false ? ("SUSPENDED" as const) : ("ACTIVE" as const),
+            joinedAt: u.date_joined || new Date().toISOString(),
+          };
+        });
+      }
+    } catch {
+      // fallback
+    }
+
+    const { users } = await import("../mock/data");
+    return users.filter((u) => u.role === "DONOR");
   },
 };

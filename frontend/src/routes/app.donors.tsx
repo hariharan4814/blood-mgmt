@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SectionCard } from "@/components/common/SectionCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -15,7 +15,10 @@ export const Route = createFileRoute("/app/donors")({
   head: () => ({
     meta: [
       { title: "Donor Directory — Blood Management System" },
-      { name: "description", content: "Search registered donors, review contact details and eligibility for upcoming drives." },
+      {
+        name: "description",
+        content: "Search registered donors, review contact details and eligibility for upcoming drives.",
+      },
       { property: "og:title", content: "Donor Directory — Blood Management System" },
       { property: "og:description", content: "Search registered donors and review eligibility." },
       { name: "robots", content: "noindex" },
@@ -25,22 +28,22 @@ export const Route = createFileRoute("/app/donors")({
 });
 
 function DonorsPage() {
-  const { data, loading } = useAsync(() => donorService.listDonors());
+  const { data, loading, error } = useAsync(() => donorService.listDonors());
   const [query, setQuery] = useState("");
 
-  const filtered = useMemo(
-    () =>
-      (data ?? []).filter(
-        (d) =>
-          d.name.toLowerCase().includes(query.toLowerCase()) ||
-          d.email.toLowerCase().includes(query.toLowerCase()),
-      ),
-    [data, query],
-  );
+  const filtered = useMemo(() => {
+    const list = data ?? [];
+    return list.filter((d) => {
+      const donorName = (d.name || "").toLowerCase();
+      const donorEmail = (d.email || "").toLowerCase();
+      const q = query.toLowerCase();
+      return !q || donorName.includes(q) || donorEmail.includes(q);
+    });
+  }, [data, query]);
 
   return (
     <DashboardLayout title="Donors">
-      <PageHeader title="Donor directory" description="Registered donors linked to your blood bank." />
+      <PageHeader title="Donor directory" description="Registered donors linked to your blood bank network." />
       <SectionCard
         bodyClassName="p-0"
         actions={
@@ -60,15 +63,29 @@ function DonorsPage() {
       >
         {loading ? (
           <TableSkeleton cols={5} />
+        ) : error ? (
+          <div className="p-5">
+            <EmptyState
+              icon={Users}
+              title="Access restricted or unavailable"
+              description={error.message || "Donor directory is available to Blood Bank Administrators."}
+            />
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="p-5"><EmptyState title="No donors found" description="Try a different name or email." /></div>
+          <div className="p-5">
+            <EmptyState
+              icon={Users}
+              title="No donors found"
+              description="Try a different search query or invite donors to register."
+            />
+          </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Donor</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Organisation</TableHead>
+                <TableHead>Organisation / Group</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -76,11 +93,15 @@ function DonorsPage() {
             <TableBody>
               {filtered.map((d) => (
                 <TableRow key={d.id}>
-                  <TableCell className="font-medium">{d.name}</TableCell>
-                  <TableCell>{d.email}</TableCell>
-                  <TableCell>{d.organization}</TableCell>
-                  <TableCell>{new Date(d.joinedAt).toLocaleDateString()}</TableCell>
-                  <TableCell><StatusBadge status={d.status} /></TableCell>
+                  <TableCell className="font-medium">{d.name || "Registered Donor"}</TableCell>
+                  <TableCell>{d.email || "—"}</TableCell>
+                  <TableCell>{d.organization || "—"}</TableCell>
+                  <TableCell>
+                    {d.joinedAt ? new Date(d.joinedAt).toLocaleDateString() : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={d.status || "ACTIVE"} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

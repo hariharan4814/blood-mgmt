@@ -52,6 +52,9 @@ frontend/.wrangler/
 *.swp
 *.swo
 
+# Local development & credentials
+users.txt
+
 # OS
 .DS_Store
 Thumbs.db

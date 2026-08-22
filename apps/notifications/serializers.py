@@ -119,3 +119,36 @@ class EmailRecipientSerializer(serializers.ModelSerializer):
         if request and request.user and request.user.is_authenticated:
             validated_data["created_by"] = request.user
         return super().create(validated_data)
+
+
+class EmailStatusSerializer(serializers.Serializer):
+    """
+    Serializer for safe SMTP and email backend status (Super Admin).
+    Never exposes passwords or sensitive credentials.
+    """
+    smtp_configured = serializers.BooleanField(help_text="True if SMTP host and credentials are configured.")
+    email_backend = serializers.CharField(help_text="Active Django email backend class.")
+    default_from_email = serializers.CharField(help_text="System default sender address.")
+    email_host = serializers.CharField(help_text="SMTP server host.")
+    email_port = serializers.IntegerField(help_text="SMTP server port.")
+    use_tls = serializers.BooleanField(help_text="Whether STARTTLS is enabled.")
+
+
+class TestEmailSerializer(serializers.Serializer):
+    """
+    Serializer for sending a controlled administrator test email.
+    """
+    recipient_email = serializers.EmailField(
+        required=True,
+        help_text="Destination email address for the test message."
+    )
+    subject = serializers.CharField(
+        max_length=200,
+        default="[Test] Blood Management System Email Verification",
+        help_text="Email subject line."
+    )
+    message = serializers.CharField(
+        default="This is an automated test email confirming that the Blood Management System SMTP email delivery service is fully operational.",
+        help_text="Email body message content."
+    )
+

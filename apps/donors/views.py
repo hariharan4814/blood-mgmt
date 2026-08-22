@@ -3,7 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
-from apps.accounts.permissions import IsDonor, IsSuperAdmin
+from apps.accounts.models import UserRole
+from apps.accounts.permissions import IsDonor, IsSuperAdmin, HasRoles
 from .models import Donor
 from .serializers import (
     DonorProfileSerializer,
@@ -138,10 +139,10 @@ class DonorMeEligibilityView(APIView):
 )
 class DonorAdminListView(generics.ListAPIView):
     """
-    Super Admin endpoint to inspect donor records across the platform.
+    Super Admin and Blood Bank Admin endpoint to inspect donor records across the platform.
     """
     serializer_class = DonorProfileSerializer
-    permission_classes = [IsSuperAdmin]
+    permission_classes = [HasRoles(UserRole.SUPER_ADMIN, UserRole.BLOOD_BANK_ADMIN)]
 
     def get_queryset(self):
         queryset = Donor.objects.select_related("user").all().order_by("-created_at")
@@ -154,15 +155,15 @@ class DonorAdminListView(generics.ListAPIView):
 @extend_schema_view(
     get=extend_schema(
         summary="Retrieve Donor Profile (Admin)",
-        description="Retrieve a specific donor's profile by ID. Restricted to Super Administrators.",
+        description="Retrieve a specific donor's profile by ID. Restricted to Super Administrators and Blood Bank Administrators.",
         responses={200: DonorProfileSerializer},
         tags=["Donor Management (Admin)"],
     )
 )
 class DonorAdminDetailView(generics.RetrieveAPIView):
     """
-    Super Admin endpoint to view an individual donor profile.
+    Super Admin and Blood Bank Admin endpoint to view an individual donor profile.
     """
     queryset = Donor.objects.select_related("user").all()
     serializer_class = DonorProfileSerializer
-    permission_classes = [IsSuperAdmin]
+    permission_classes = [HasRoles(UserRole.SUPER_ADMIN, UserRole.BLOOD_BANK_ADMIN)]

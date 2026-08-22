@@ -12,6 +12,7 @@ export const Route = createFileRoute("/app")({
  */
 const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   "/app/users": ["SUPER_ADMIN"],
+  "/app/emails": ["SUPER_ADMIN"],
   "/app/blood-banks": ["SUPER_ADMIN"],
   "/app/hospitals": ["SUPER_ADMIN"],
   "/app/settings": ["SUPER_ADMIN"],
@@ -25,6 +26,7 @@ const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   "/app/test-history": ["SUPER_ADMIN", "LAB_TECHNICIAN", "BLOOD_BANK_ADMIN"],
   "/app/camps": ["SUPER_ADMIN", "BLOOD_BANK_ADMIN", "DONOR"],
   "/app/donation-history": ["SUPER_ADMIN", "DONOR"],
+  "/app/notifications": ["SUPER_ADMIN", "BLOOD_BANK_ADMIN", "HOSPITAL_STAFF", "LAB_TECHNICIAN", "DONOR"],
   "/app/profile": ["DONOR", "SUPER_ADMIN", "BLOOD_BANK_ADMIN", "HOSPITAL_STAFF", "LAB_TECHNICIAN"],
   "/app/analytics": ["SUPER_ADMIN", "BLOOD_BANK_ADMIN"],
 };

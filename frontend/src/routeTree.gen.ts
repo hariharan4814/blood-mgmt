@@ -25,6 +25,7 @@ import { Route as AppCampsRouteImport } from './routes/app.camps'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppDonationHistoryRouteImport } from './routes/app.donation-history'
 import { Route as AppDonorsRouteImport } from './routes/app.donors'
+import { Route as AppEmailsRouteImport } from './routes/app.emails'
 import { Route as AppHospitalsRouteImport } from './routes/app.hospitals'
 import { Route as AppInventoryRouteImport } from './routes/app.inventory'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
@@ -117,6 +118,11 @@ const AppDonorsRoute = AppDonorsRouteImport.update({
   path: '/donors',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEmailsRoute = AppEmailsRouteImport.update({
+  id: '/emails',
+  path: '/emails',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppHospitalsRoute = AppHospitalsRouteImport.update({
   id: '/hospitals',
   path: '/hospitals',
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/donation-history': typeof AppDonationHistoryRoute
   '/app/donors': typeof AppDonorsRoute
+  '/app/emails': typeof AppEmailsRoute
   '/app/hospitals': typeof AppHospitalsRoute
   '/app/inventory': typeof AppInventoryRoute
   '/app/notifications': typeof AppNotificationsRoute
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/donation-history': typeof AppDonationHistoryRoute
   '/app/donors': typeof AppDonorsRoute
+  '/app/emails': typeof AppEmailsRoute
   '/app/hospitals': typeof AppHospitalsRoute
   '/app/inventory': typeof AppInventoryRoute
   '/app/notifications': typeof AppNotificationsRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/donation-history': typeof AppDonationHistoryRoute
   '/app/donors': typeof AppDonorsRoute
+  '/app/emails': typeof AppEmailsRoute
   '/app/hospitals': typeof AppHospitalsRoute
   '/app/inventory': typeof AppInventoryRoute
   '/app/notifications': typeof AppNotificationsRoute
@@ -278,6 +287,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/donation-history'
     | '/app/donors'
+    | '/app/emails'
     | '/app/hospitals'
     | '/app/inventory'
     | '/app/notifications'
@@ -306,6 +316,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/donation-history'
     | '/app/donors'
+    | '/app/emails'
     | '/app/hospitals'
     | '/app/inventory'
     | '/app/notifications'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/donation-history'
     | '/app/donors'
+    | '/app/emails'
     | '/app/hospitals'
     | '/app/inventory'
     | '/app/notifications'
@@ -474,6 +486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDonorsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/emails': {
+      id: '/app/emails'
+      path: '/emails'
+      fullPath: '/app/emails'
+      preLoaderRoute: typeof AppEmailsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/hospitals': {
       id: '/app/hospitals'
       path: '/hospitals'
@@ -562,6 +581,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppDonationHistoryRoute: typeof AppDonationHistoryRoute
   AppDonorsRoute: typeof AppDonorsRoute
+  AppEmailsRoute: typeof AppEmailsRoute
   AppHospitalsRoute: typeof AppHospitalsRoute
   AppInventoryRoute: typeof AppInventoryRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
@@ -584,6 +604,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppDonationHistoryRoute: AppDonationHistoryRoute,
   AppDonorsRoute: AppDonorsRoute,
+  AppEmailsRoute: AppEmailsRoute,
   AppHospitalsRoute: AppHospitalsRoute,
   AppInventoryRoute: AppInventoryRoute,
   AppNotificationsRoute: AppNotificationsRoute,

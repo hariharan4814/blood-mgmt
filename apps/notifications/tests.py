@@ -719,3 +719,62 @@ class EmailServiceTests(TestCase):
                     message="Testing fail loudly.",
                     fail_silently=False,
                 )
+
+
+class EmailManagementAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.super_admin = User.objects.create_superuser(
+            username="admin_email_test",
+            email="admin.email@test.com",
+            password="AdminPassword123!",
+            role=UserRole.SUPER_ADMIN,
+            is_verified=True,
+        )
+        self.donor = User.objects.create_user(
+            username="donor_email_test",
+            email="donor.email@test.com",
+            password="DonorPassword123!",
+            role=UserRole.DONOR,
+            is_verified=True,
+        )
+
+    def test_super_admin_get_email_status(self):
+        self.client.force_authenticate(user=self.super_admin)
+        response = self.client.get("/api/notifications/email-status/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("smtp_configured", data)
+        self.assertIn("email_backend", data)
+        self.assertIn("default_from_email", data)
+        self.assertNotIn("password", data)
+
+    def test_non_super_admin_cannot_get_email_status(self):
+        self.client.force_authenticate(user=self.donor)
+        response = self.client.get("/api/notifications/email-status/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_super_admin_send_test_email(self):
+        self.client.force_authenticate(user=self.super_admin)
+        payload = {
+            "recipient_email": "admin.verify@example.com",
+            "subject": "Admin Verification Test",
+            "message": "Testing SMTP delivery."
+        }
+        response = self.client.post("/api/notifications/test-email/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.json()["success"])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["admin.verify@example.com"])
+
+    def test_non_super_admin_cannot_send_test_email(self):
+        self.client.force_authenticate(user=self.donor)
+        payload = {
+            "recipient_email": "donor.verify@example.com",
+            "subject": "Unauthorized Test",
+            "message": "This should fail."
+        }
+        response = self.client.post("/api/notifications/test-email/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+

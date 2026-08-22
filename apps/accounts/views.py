@@ -8,6 +8,7 @@ from .models import UserRole
 from .serializers import (
     UserSerializer,
     UserRegistrationSerializer,
+    UserAdminCreateSerializer,
     UserAdminUpdateSerializer,
     CustomTokenObtainPairSerializer,
 )
@@ -103,15 +104,26 @@ class CurrentUserView(generics.RetrieveAPIView):
         description="List all system users with pagination support. Restricted to Super Administrators.",
         responses={200: UserSerializer(many=True)},
         tags=["User Management"]
+    ),
+    post=extend_schema(
+        summary="Create System User (Admin)",
+        description="Provision a new system user with any role. Restricted to Super Administrators.",
+        request=UserAdminCreateSerializer,
+        responses={201: UserSerializer},
+        tags=["User Management"]
     )
 )
-class UserListView(generics.ListAPIView):
+class UserListView(generics.ListCreateAPIView):
     """
-    Super Admin endpoint to list all registered users.
+    Super Admin endpoint to list all registered users or provision new accounts.
     """
     queryset = User.objects.all().order_by("-date_joined")
-    serializer_class = UserSerializer
     permission_classes = [IsSuperAdmin]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return UserAdminCreateSerializer
+        return UserSerializer
 
 
 @extend_schema_view(

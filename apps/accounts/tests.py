@@ -332,3 +332,34 @@ class UserManagementAPITests(TestCase):
         response = self.client.delete(self.admin_detail_url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(User.objects.filter(id=self.admin.id).exists())
+
+    def test_super_admin_can_provision_user_post(self):
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "username": "new_lab_tech",
+            "email": "labtech@example.com",
+            "password": "SecurePassword123!",
+            "role": UserRole.LAB_TECHNICIAN,
+            "first_name": "Lab",
+            "last_name": "Tech",
+            "phone": "+1999888777",
+            "is_active": True,
+        }
+        response = self.client.post(self.users_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(data["username"], "new_lab_tech")
+        self.assertEqual(data["role"], UserRole.LAB_TECHNICIAN)
+        self.assertTrue(User.objects.filter(username="new_lab_tech").exists())
+
+    def test_non_super_admin_cannot_provision_user(self):
+        self.client.force_authenticate(user=self.hospital_staff)
+        payload = {
+            "username": "unauthorized_user",
+            "email": "unauth@example.com",
+            "password": "SecurePassword123!",
+            "role": UserRole.BLOOD_BANK_ADMIN,
+        }
+        response = self.client.post(self.users_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+

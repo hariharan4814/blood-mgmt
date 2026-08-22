@@ -5,12 +5,15 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import IsSuperAdmin
 from .models import EmailRecipient, Notification, NotificationType
 from .permissions import CanManageEmailRecipients, IsNotificationRecipient
 from .serializers import (
     EmailRecipientSerializer,
+    EmailStatusSerializer,
     MarkAllReadResponseSerializer,
     NotificationSerializer,
+    TestEmailSerializer,
     UnreadCountSerializer,
 )
 from .services import (
@@ -262,3 +265,85 @@ class EmailRecipientDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = EmailRecipient.objects.select_related("user", "created_by").all()
     serializer_class = EmailRecipientSerializer
     permission_classes = [CanManageEmailRecipients]
+
+
+@extend_schema(
+    tags=["Email Management"],
+    summary="Get SMTP & Email Backend Configuration Status",
+    description="Retrieve public SMTP connection status and backend details. Restricted to Super Administrators. Never returns secrets.",
+    responses={200: EmailStatusSerializer},
+)
+class EmailStatusView(APIView):
+    """
+    Super Admin endpoint to inspect email delivery infrastructure status.
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        from django.conf import settings
+        backend_name = getattr(settings, "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend").split(".")[-1]
+        host = getattr(settings, "EMAIL_HOST", "smtp.gmail.com")
+        port = getattr(settings, "EMAIL_PORT", 587)
+        use_tls = getattr(settings, "EMAIL_USE_TLS", True)
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@bloodmgmt.org")
+        smtp_configured = bool(getattr(settings, "EMAIL_HOST_USER", ""))
+
+        data = {
+            "smtp_configured": smtp_configured,
+            "email_backend": backend_name,
+            "default_from_email": from_email,
+            "email_host": host,
+            "email_port": port,
+            "use_tls": use_tls,
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    tags=["Email Management"],
+    summary="Send Controlled Administrator Test Email",
+    description="Dispatches a single test email to verify SMTP delivery. Restricted to Super Administrators.",
+    request=TestEmailSerializer,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+    },
+)
+class TestEmailView(APIView):
+    """
+    Super Admin endpoint to test outbound email connectivity.
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request):
+        serializer = TestEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        recipient_email = serializer.validated_data["recipient_email"]
+        subject = serializer.validated_data["subject"]
+        message = serializer.validated_data["message"]
+
+        from .email_service import send_notification_email
+        try:
+            success = send_notification_email(
+                recipient=recipient_email,
+                subject=subject,
+                message=message,
+                fail_silently=False,
+            )
+            if success:
+                return Response(
+                    {"success": True, "detail": f"Test email successfully dispatched to {recipient_email}."},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"success": False, "detail": "Email dispatch could not be completed by SMTP backend."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except Exception as e:
+            return Response(
+                {"success": False, "detail": f"Email delivery error: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
