@@ -43,7 +43,7 @@ from .services import get_bank_inventory_summary, get_all_banks_inventory_summar
     )
 )
 class BloodBankListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSuperAdminOrAssignedBankAdmin]
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -59,9 +59,9 @@ class BloodBankListCreateView(generics.ListCreateAPIView):
         if is_admin:
             qs = BloodBank.objects.all()
         elif user.role == UserRole.BLOOD_BANK_ADMIN:
-            qs = BloodBank.objects.filter(Q(admin=user) | Q(is_active=True))
+            qs = BloodBank.objects.filter(admin=user)
         else:
-            qs = BloodBank.objects.filter(is_active=True)
+            qs = BloodBank.objects.none()
 
         status_param = self.request.query_params.get("status")
         if status_param == "active":
@@ -130,7 +130,7 @@ class BloodBankListCreateView(generics.ListCreateAPIView):
 )
 class BloodBankDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = BloodBank.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSuperAdminOrAssignedBankAdmin]
 
     def get_serializer_class(self):
         if self.request.method in ["PUT", "PATCH"]:
