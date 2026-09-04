@@ -7,53 +7,55 @@ export interface MapMarkerItem {
   title: string;
   latitude: number;
   longitude: number;
-  distanceKm?: number;
-  badge?: string;
+  distanceKm?: number | undefined;
+  badge?: string | undefined;
   details?: {
-    bloodGroup?: string;
-    isEligible?: boolean;
-    beds?: number;
-    capacity?: number;
-    address?: string;
-    contactNumber?: string;
-    city?: string;
-  };
-  onClick?: () => void;
+    bloodGroup?: string | undefined;
+    isEligible?: boolean | undefined;
+    beds?: number | undefined;
+    capacity?: number | undefined;
+    address?: string | undefined;
+    contactNumber?: string | undefined;
+    city?: string | undefined;
+    rating?: number | null | undefined;
+    reviewCount?: number | undefined;
+  } | undefined;
+  onClick?: (() => void) | undefined;
 }
 
 interface LeafletMapProps {
-  center?: [number, number];
-  zoom?: number;
-  markers?: MapMarkerItem[];
-  selectedPosition?: [number, number] | null;
-  onPositionChange?: (pos: [number, number]) => void;
-  isPicker?: boolean;
-  radiusKm?: number | null;
-  height?: string;
-  className?: string;
-  focusedMarkerId?: string | number | null;
+  center?: [number, number] | undefined;
+  zoom?: number | undefined;
+  markers?: MapMarkerItem[] | undefined;
+  selectedPosition?: [number, number] | null | undefined;
+  onPositionChange?: ((pos: [number, number]) => void) | undefined;
+  isPicker?: boolean | undefined;
+  radiusKm?: number | null | undefined;
+  height?: string | undefined;
+  className?: string | undefined;
+  focusedMarkerId?: string | number | null | undefined;
 }
 
 const DEFAULT_CENTER: [number, number] = [13.0827, 80.2707]; // Chennai default
 
 export function LeafletMap({
   center = DEFAULT_CENTER,
-  zoom = 12,
+  zoom = 13,
   markers = [],
   selectedPosition = null,
   onPositionChange,
   isPicker = false,
   radiusKm = null,
-  height = "h-[450px]",
+  height = "420px",
   className = "",
   focusedMarkerId = null,
 }: LeafletMapProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
-  const circleRef = useRef<any>(null);
   const pickerMarkerRef = useRef<any>(null);
-  const [isClient, setIsClient] = useState(false);
+  const circleLayerRef = useRef<any>(null);
+  const [isClient, setIsClient] = useState<boolean>(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -61,15 +63,21 @@ export function LeafletMap({
 
   // Initialize Map
   useEffect(() => {
-    if (!isClient || !containerRef.current || mapRef.current) return;
+    if (!isClient || !mapContainerRef.current) return;
 
     let isMounted = true;
 
     import("leaflet").then((L) => {
-      if (!isMounted || !containerRef.current || mapRef.current) return;
+      if (!isMounted || !mapContainerRef.current) return;
 
-      const map = L.map(containerRef.current, {
-        center: selectedPosition || center,
+      if (mapRef.current) {
+        mapRef.current.remove();
+      }
+
+      const initialCenter = selectedPosition || center || DEFAULT_CENTER;
+
+      const map = L.map(mapContainerRef.current, {
+        center: initialCenter,
         zoom: zoom,
         zoomControl: true,
       });
@@ -80,6 +88,7 @@ export function LeafletMap({
         maxZoom: 19,
       }).addTo(map);
 
+      // Create layers
       const markersLayer = L.layerGroup().addTo(map);
       mapRef.current = map;
       markersLayerRef.current = markersLayer;
@@ -88,7 +97,7 @@ export function LeafletMap({
       if (isPicker && onPositionChange) {
         map.on("click", (e: any) => {
           const { lat, lng } = e.latlng;
-          onPositionChange([lat, lng]);
+          onPositionChange([Number(lat.toFixed(6)), Number(lng.toFixed(6))]);
         });
       }
 
@@ -97,7 +106,7 @@ export function LeafletMap({
         if (mapRef.current) {
           mapRef.current.invalidateSize();
         }
-      }, 200);
+      }, 100);
     });
 
     return () => {
@@ -148,55 +157,64 @@ export function LeafletMap({
           }).addTo(mapRef.current);
 
           marker.on("dragend", (e: any) => {
-            const { lat, lng } = e.target.getLatLng();
-            if (onPositionChange) onPositionChange([lat, lng]);
+            const pos = e.target.getLatLng();
+            onPositionChange?.([Number(pos.lat.toFixed(6)), Number(pos.lng.toFixed(6))]);
           });
 
           pickerMarkerRef.current = marker;
+          mapRef.current.setView(selectedPosition, Math.max(mapRef.current.getZoom(), 14));
         }
       }
     });
   }, [isClient, selectedPosition, isPicker]);
 
-  // Update Markers & Radius Circle
+  // Handle Search Radius Circle
+  useEffect(() => {
+    if (!isClient || !mapRef.current) return;
+
+    import("leaflet").then((L) => {
+      if (!mapRef.current) return;
+
+      if (circleLayerRef.current) {
+        circleLayerRef.current.remove();
+        circleLayerRef.current = null;
+      }
+
+      if (typeof radiusKm === "number" && radiusKm > 0 && center) {
+        const circle = L.circle(center, {
+          radius: radiusKm * 1000,
+          color: "#4f46e5",
+          fillColor: "#818cf8",
+          fillOpacity: 0.12,
+          weight: 1.5,
+          dashArray: "4, 6",
+        }).addTo(mapRef.current);
+
+        circleLayerRef.current = circle;
+      }
+    });
+  }, [isClient, radiusKm, center]);
+
+  // Render Markers
   useEffect(() => {
     if (!isClient || !mapRef.current || !markersLayerRef.current) return;
 
     import("leaflet").then((L) => {
-      const markersLayer = markersLayerRef.current;
-      if (!markersLayer) return;
+      if (!mapRef.current || !markersLayerRef.current) return;
 
+      const markersLayer = markersLayerRef.current;
       markersLayer.clearLayers();
 
-      // Radius circle
-      if (circleRef.current) {
-        circleRef.current.remove();
-        circleRef.current = null;
-      }
-
-      if (radiusKm && radiusKm > 0) {
-        const circleCenter = selectedPosition || center;
-        circleRef.current = L.circle(circleCenter, {
-          radius: radiusKm * 1000,
-          color: "#4f46e5",
-          fillColor: "#6366f1",
-          fillOpacity: 0.08,
-          weight: 1.5,
-          dashArray: "4, 6",
-        }).addTo(mapRef.current);
-      }
-
-      // Add markers
       const markerInstances: Record<string | number, any> = {};
 
       markers.forEach((m) => {
-        let pinBg = "bg-primary";
-        let iconSvg = "";
+        let pinBg = "bg-rose-600";
         let typeBadge = "";
+        let iconSvg = "";
 
         if (m.type === "donor") {
           pinBg = "bg-rose-600";
-          typeBadge = `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">Donor (${m.details?.bloodGroup || ""})</span>`;
+          typeBadge = `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">Donor</span>`;
           iconSvg = `<svg class="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
         } else if (m.type === "hospital") {
           pinBg = "bg-blue-600";
@@ -208,7 +226,7 @@ export function LeafletMap({
           iconSvg = `<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`;
         } else {
           pinBg = "bg-indigo-600";
-          typeBadge = `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">Your Location</span>`;
+          typeBadge = `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">User</span>`;
           iconSvg = `<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`;
         }
 
@@ -242,6 +260,14 @@ export function LeafletMap({
           ? `<p class="text-xs text-slate-600 mt-1 font-mono">📞 ${m.details.contactNumber}</p>`
           : "";
 
+        const ratingHtml =
+          typeof m.details?.rating === "number"
+            ? `<div class="flex items-center gap-1 mt-1 text-xs text-amber-600 font-semibold">
+                 <span>★ ${m.details.rating.toFixed(1)}</span>
+                 <span class="text-slate-400 font-normal">(${m.details.reviewCount || 0} approved)</span>
+               </div>`
+            : "";
+
         const popupContent = `
           <div class="p-1 max-w-[240px]">
             <div class="flex items-center justify-between gap-2 mb-1">
@@ -249,6 +275,7 @@ export function LeafletMap({
               ${distInfo ? `<span class="text-xs text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">${m.distanceKm} km</span>` : ""}
             </div>
             <h4 class="font-bold text-sm text-slate-900 leading-tight">${m.title}</h4>
+            ${ratingHtml}
             ${detailsHtml}
             ${contactHtml}
           </div>
@@ -300,7 +327,7 @@ export function LeafletMap({
 
   return (
     <div className={`relative overflow-hidden rounded-xl border border-border shadow-sm ${height} ${className}`}>
-      <div ref={containerRef} className="size-full z-0" />
+      <div ref={mapContainerRef} className="size-full z-0" />
     </div>
   );
 }

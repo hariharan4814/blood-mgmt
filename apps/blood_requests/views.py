@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from rest_framework import generics, status, permissions
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
@@ -182,15 +184,19 @@ class BloodRequestRejectView(APIView):
 @extend_schema_view(
     get=extend_schema(
         summary="List Hospitals",
-        description="Retrieve all active partner hospitals.",
+        description="List partner hospitals with search and status filtering.",
+        parameters=[
+            OpenApiParameter("search", str, description="Search by name, city, or state", required=False),
+            OpenApiParameter("status", str, description="Filter by status: active, inactive, or all", required=False),
+        ],
         responses={200: HospitalSerializer(many=True)},
         tags=["Hospitals"],
     ),
     post=extend_schema(
         summary="Create Hospital",
-        description="Register a new partner hospital. Restricted to Super Admin.",
+        description="Register a new partner hospital. Super Admin only.",
         request=HospitalSerializer,
-        responses={201: HospitalSerializer},
+        responses={201: HospitalSerializer, 403: OpenApiResponse(description="Permission denied.")},
         tags=["Hospitals"],
     ),
 )
@@ -202,13 +208,36 @@ class HospitalListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         if not (user and user.is_authenticated):
             return Hospital.objects.none()
-        if user.is_super_admin:
-            return Hospital.objects.all().order_by("name")
-        return Hospital.objects.filter(is_active=True).order_by("name")
+
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if is_admin:
+            qs = Hospital.objects.all()
+        else:
+            qs = Hospital.objects.filter(is_active=True)
+
+        status_param = self.request.query_params.get("status")
+        if status_param == "active":
+            qs = qs.filter(is_active=True)
+        elif status_param == "inactive":
+            qs = qs.filter(is_active=False)
+
+        search = self.request.query_params.get("search")
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(city__icontains=search)
+                | Q(state__icontains=search)
+                | Q(address__icontains=search)
+            )
+
+        return qs.order_by("name")
 
     def perform_create(self, serializer):
-        if not (self.request.user and self.request.user.is_super_admin):
-            raise permissions.PermissionDenied("Only Super Administrators can create hospital records.")
+        user = self.request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if not is_admin:
+            raise PermissionDenied("Only Super Administrators can create hospital records.")
         serializer.save()
 
 
@@ -226,14 +255,30 @@ class HospitalListCreateView(generics.ListCreateAPIView):
         responses={200: HospitalSerializer},
         tags=["Hospitals"],
     ),
+    delete=extend_schema(
+        summary="Delete Hospital",
+        description="Delete hospital facility. Restricted to Super Admin.",
+        responses={204: OpenApiResponse(description="Hospital deleted.")},
+        tags=["Hospitals"],
+    ),
 )
-class HospitalDetailView(generics.RetrieveUpdateAPIView):
+class HospitalDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Hospital.objects.all()
     serializer_class = HospitalSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def check_permissions(self, request):
         super().check_permissions(request)
-        if request.method in ["PUT", "PATCH", "DELETE"] and not (request.user and request.user.is_super_admin):
-            raise permissions.PermissionDenied("Only Super Administrators can modify hospital records.")
+        user = request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if request.method in ["PUT", "PATCH", "DELETE"] and not is_admin:
+            raise PermissionDenied("Only Super Administrators can modify or delete hospital records.")
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        user = request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if request.method in permissions.SAFE_METHODS and not is_admin and not obj.is_active:
+            raise PermissionDenied("Cannot view inactive hospital.")
+
 

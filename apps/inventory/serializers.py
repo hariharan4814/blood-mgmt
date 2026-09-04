@@ -23,6 +23,8 @@ class BloodBankSerializer(serializers.ModelSerializer):
     admin_username = serializers.ReadOnlyField(source="admin.username")
     admin_email = serializers.ReadOnlyField(source="admin.email")
     total_units_count = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
 
     class Meta:
         model = BloodBank
@@ -43,6 +45,8 @@ class BloodBankSerializer(serializers.ModelSerializer):
             "admin_username",
             "admin_email",
             "total_units_count",
+            "average_rating",
+            "review_count",
             "created_at",
             "updated_at",
         ]
@@ -52,12 +56,24 @@ class BloodBankSerializer(serializers.ModelSerializer):
             "admin_username",
             "admin_email",
             "total_units_count",
+            "average_rating",
+            "review_count",
             "created_at",
             "updated_at",
         ]
 
     def get_total_units_count(self, obj):
         return obj.blood_units.count()
+
+    def get_average_rating(self, obj) -> float | None:
+        from django.db.models import Avg
+        from apps.common.models import ReviewStatus
+        avg = obj.reviews.filter(status=ReviewStatus.APPROVED).aggregate(Avg("rating"))["rating__avg"]
+        return round(float(avg), 1) if avg is not None else None
+
+    def get_review_count(self, obj) -> int:
+        from apps.common.models import ReviewStatus
+        return obj.reviews.filter(status=ReviewStatus.APPROVED).count()
 
 
 class BloodBankInputSerializer(serializers.ModelSerializer):

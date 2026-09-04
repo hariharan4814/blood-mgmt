@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.db.models import Avg
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -9,6 +10,7 @@ from apps.blood_requests.models import Hospital
 from apps.donors.models import Donor
 from apps.emergency_sos.compatibility import calculate_haversine_distance_km
 from apps.inventory.models import BloodBank
+from .models import ReviewStatus
 
 from .nearby_serializers import (
     NearbyBloodBankSerializer,
@@ -112,6 +114,9 @@ class NearbySearchView(APIView):
                     center_lat, center_lng, bank.latitude, bank.longitude
                 )
                 if dist is not None and dist <= radius_km:
+                    avg_rating = bank.reviews.filter(status=ReviewStatus.APPROVED).aggregate(Avg("rating"))["rating__avg"]
+                    rating = round(float(avg_rating), 1) if avg_rating is not None else None
+                    review_count = bank.reviews.filter(status=ReviewStatus.APPROVED).count()
                     blood_banks_results.append({
                         "id": bank.id,
                         "name": bank.name,
@@ -124,6 +129,8 @@ class NearbySearchView(APIView):
                         "latitude": float(bank.latitude),
                         "longitude": float(bank.longitude),
                         "distance_km": round(dist, 2),
+                        "rating": rating,
+                        "review_count": review_count,
                     })
             blood_banks_results.sort(key=lambda x: x["distance_km"])
 
@@ -139,6 +146,9 @@ class NearbySearchView(APIView):
                     center_lat, center_lng, hospital.latitude, hospital.longitude
                 )
                 if dist is not None and dist <= radius_km:
+                    avg_rating = hospital.reviews.filter(status=ReviewStatus.APPROVED).aggregate(Avg("rating"))["rating__avg"]
+                    rating = round(float(avg_rating), 1) if avg_rating is not None else None
+                    review_count = hospital.reviews.filter(status=ReviewStatus.APPROVED).count()
                     hospitals_results.append({
                         "id": hospital.id,
                         "name": hospital.name,
@@ -151,6 +161,8 @@ class NearbySearchView(APIView):
                         "latitude": float(hospital.latitude),
                         "longitude": float(hospital.longitude),
                         "distance_km": round(dist, 2),
+                        "rating": rating,
+                        "review_count": review_count,
                     })
             hospitals_results.sort(key=lambda x: x["distance_km"])
 

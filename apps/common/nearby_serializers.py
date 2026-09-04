@@ -79,6 +79,8 @@ class NearbyHospitalSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()
     distance_km = serializers.FloatField()
+    rating = serializers.FloatField(allow_null=True, required=False)
+    review_count = serializers.IntegerField(default=0, required=False)
 
 
 class NearbyBloodBankSerializer(serializers.Serializer):
@@ -96,6 +98,8 @@ class NearbyBloodBankSerializer(serializers.Serializer):
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()
     distance_km = serializers.FloatField()
+    rating = serializers.FloatField(allow_null=True, required=False)
+    review_count = serializers.IntegerField(default=0, required=False)
 
 
 class NearbySearchResultsSerializer(serializers.Serializer):

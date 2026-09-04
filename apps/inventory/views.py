@@ -1,4 +1,6 @@
+from django.db.models import Q
 from rest_framework import generics, status, permissions
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
@@ -41,7 +43,7 @@ from .services import get_bank_inventory_summary, get_all_banks_inventory_summar
     )
 )
 class BloodBankListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsSuperAdminOrAssignedBankAdmin]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -53,18 +55,44 @@ class BloodBankListCreateView(generics.ListCreateAPIView):
         if not (user and user.is_authenticated):
             return BloodBank.objects.none()
 
-        if user.is_super_admin:
-            return BloodBank.objects.all().order_by("name")
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if is_admin:
+            qs = BloodBank.objects.all()
+        elif user.role == UserRole.BLOOD_BANK_ADMIN:
+            qs = BloodBank.objects.filter(Q(admin=user) | Q(is_active=True))
+        else:
+            qs = BloodBank.objects.filter(is_active=True)
 
-        if user.role == UserRole.BLOOD_BANK_ADMIN:
-            return BloodBank.objects.filter(admin=user).order_by("name")
+        status_param = self.request.query_params.get("status")
+        if status_param == "active":
+            qs = qs.filter(is_active=True)
+        elif status_param == "inactive":
+            qs = qs.filter(is_active=False)
 
-        return BloodBank.objects.none()
+        search = self.request.query_params.get("search")
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(city__icontains=search)
+                | Q(state__icontains=search)
+                | Q(address__icontains=search)
+            )
+
+        return qs.order_by("name")
 
     def perform_create(self, serializer):
+        user = self.request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if not is_admin:
+            raise PermissionDenied("Only Super Administrators can create blood bank records.")
         serializer.save()
 
     def create(self, request, *args, **kwargs):
+        user = request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if not is_admin:
+            raise PermissionDenied("Only Super Administrators can create blood bank records.")
         input_serializer = self.get_serializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         blood_bank = input_serializer.save()
@@ -75,7 +103,7 @@ class BloodBankListCreateView(generics.ListCreateAPIView):
 @extend_schema_view(
     get=extend_schema(
         summary="Retrieve Blood Bank Details",
-        description="Retrieve details of a specific blood bank. Super Admin or assigned Blood Bank Admin only.",
+        description="Retrieve details of a specific blood bank. Super Admin, assigned Admin, or authenticated users (active only).",
         responses={200: BloodBankSerializer, 403: OpenApiResponse(description="Permission denied."), 404: OpenApiResponse(description="Not found.")},
         tags=["Blood Banks"],
     ),
@@ -93,15 +121,46 @@ class BloodBankListCreateView(generics.ListCreateAPIView):
         responses={200: BloodBankSerializer, 400: OpenApiResponse(description="Validation error.")},
         tags=["Blood Banks"],
     ),
+    delete=extend_schema(
+        summary="Delete Blood Bank",
+        description="Delete a blood bank facility. Super Admin only.",
+        responses={204: OpenApiResponse(description="Blood bank deleted.")},
+        tags=["Blood Banks"],
+    ),
 )
-class BloodBankDetailView(generics.RetrieveUpdateAPIView):
+class BloodBankDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = BloodBank.objects.all()
-    permission_classes = [IsSuperAdminOrAssignedBankAdmin]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
         if self.request.method in ["PUT", "PATCH"]:
             return BloodBankInputSerializer
         return BloodBankSerializer
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        user = request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if request.method in ["PUT", "PATCH", "DELETE"] and not (is_admin or user.role == UserRole.BLOOD_BANK_ADMIN):
+            raise PermissionDenied("Only Super Administrators or assigned Blood Bank Admins can modify blood bank records.")
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        user = request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if request.method in permissions.SAFE_METHODS:
+            if not is_admin and not obj.is_active and (user.role != UserRole.BLOOD_BANK_ADMIN or obj.admin_id != user.id):
+                raise PermissionDenied("Cannot view inactive blood bank.")
+        else:
+            if not is_admin and (user.role != UserRole.BLOOD_BANK_ADMIN or obj.admin_id != user.id):
+                raise PermissionDenied("You do not have permission to manage this blood bank.")
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        is_admin = getattr(user, "is_super_admin", False) or user.is_superuser
+        if not is_admin:
+            raise PermissionDenied("Only Super Administrators can delete blood bank records.")
+        instance.delete()
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)

@@ -33,6 +33,7 @@ import { Route as AppNotificationsRouteImport } from './routes/app.notifications
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppRequestHistoryRouteImport } from './routes/app.request-history'
 import { Route as AppRequestsRouteImport } from './routes/app.requests'
+import { Route as AppReviewsRouteImport } from './routes/app.reviews'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppSosRouteImport } from './routes/app.sos'
 import { Route as AppTestHistoryRouteImport } from './routes/app.test-history'
@@ -159,6 +160,11 @@ const AppRequestsRoute = AppRequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReviewsRoute = AppReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/app/profile': typeof AppProfileRoute
   '/app/request-history': typeof AppRequestHistoryRoute
   '/app/requests': typeof AppRequestsRoute
+  '/app/reviews': typeof AppReviewsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sos': typeof AppSosRoute
   '/app/test-history': typeof AppTestHistoryRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/app/profile': typeof AppProfileRoute
   '/app/request-history': typeof AppRequestHistoryRoute
   '/app/requests': typeof AppRequestsRoute
+  '/app/reviews': typeof AppReviewsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sos': typeof AppSosRoute
   '/app/test-history': typeof AppTestHistoryRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/app/profile': typeof AppProfileRoute
   '/app/request-history': typeof AppRequestHistoryRoute
   '/app/requests': typeof AppRequestsRoute
+  '/app/reviews': typeof AppReviewsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sos': typeof AppSosRoute
   '/app/test-history': typeof AppTestHistoryRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/request-history'
     | '/app/requests'
+    | '/app/reviews'
     | '/app/settings'
     | '/app/sos'
     | '/app/test-history'
@@ -334,6 +344,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/request-history'
     | '/app/requests'
+    | '/app/reviews'
     | '/app/settings'
     | '/app/sos'
     | '/app/test-history'
@@ -365,6 +376,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/request-history'
     | '/app/requests'
+    | '/app/reviews'
     | '/app/settings'
     | '/app/sos'
     | '/app/test-history'
@@ -554,6 +566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRequestsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/reviews': {
+      id: '/app/reviews'
+      path: '/reviews'
+      fullPath: '/app/reviews'
+      preLoaderRoute: typeof AppReviewsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/settings': {
       id: '/app/settings'
       path: '/settings'
@@ -608,6 +627,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppRequestHistoryRoute: typeof AppRequestHistoryRoute
   AppRequestsRoute: typeof AppRequestsRoute
+  AppReviewsRoute: typeof AppReviewsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppSosRoute: typeof AppSosRoute
   AppTestHistoryRoute: typeof AppTestHistoryRoute
@@ -632,6 +652,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppRequestHistoryRoute: AppRequestHistoryRoute,
   AppRequestsRoute: AppRequestsRoute,
+  AppReviewsRoute: AppReviewsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppSosRoute: AppSosRoute,
   AppTestHistoryRoute: AppTestHistoryRoute,

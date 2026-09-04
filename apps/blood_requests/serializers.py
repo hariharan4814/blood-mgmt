@@ -162,7 +162,11 @@ class BloodRequestRejectSerializer(serializers.Serializer):
 class HospitalSerializer(serializers.ModelSerializer):
     """
     Representation serializer for Hospital facility entities.
+    Includes approved review aggregate rating and count.
     """
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Hospital
         fields = [
@@ -177,8 +181,20 @@ class HospitalSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "is_active",
+            "average_rating",
+            "review_count",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "average_rating", "review_count", "created_at", "updated_at"]
+
+    def get_average_rating(self, obj) -> float | None:
+        from django.db.models import Avg
+        from apps.common.models import ReviewStatus
+        avg = obj.reviews.filter(status=ReviewStatus.APPROVED).aggregate(Avg("rating"))["rating__avg"]
+        return round(float(avg), 1) if avg is not None else None
+
+    def get_review_count(self, obj) -> int:
+        from apps.common.models import ReviewStatus
+        return obj.reviews.filter(status=ReviewStatus.APPROVED).count()
 

@@ -239,6 +239,8 @@ function NearbyMapPage() {
               city: h.city,
               contactNumber: h.contact_number,
               beds: h.beds,
+              rating: h.rating,
+              reviewCount: h.review_count,
             },
             onClick: () => setFocusedMarkerId(`hosp-${h.id}`),
           });
@@ -260,6 +262,8 @@ function NearbyMapPage() {
               city: b.city,
               contactNumber: b.contact_number,
               capacity: b.capacity,
+              rating: b.rating,
+              reviewCount: b.review_count,
             },
             onClick: () => setFocusedMarkerId(`bank-${b.id}`),
           });

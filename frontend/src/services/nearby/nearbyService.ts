@@ -25,6 +25,8 @@ export interface NearbyHospital {
   latitude: number;
   longitude: number;
   distance_km: number;
+  rating?: number | null;
+  review_count?: number;
 }
 
 export interface NearbyBloodBank {
@@ -39,6 +41,8 @@ export interface NearbyBloodBank {
   latitude: number;
   longitude: number;
   distance_km: number;
+  rating?: number | null;
+  review_count?: number;
 }
 
 export interface NearbySearchResponse {
