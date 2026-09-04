@@ -1,6 +1,8 @@
+from decimal import Decimal
 import os
 import uuid
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
@@ -49,6 +51,34 @@ class User(AbstractUser):
     is_verified = models.BooleanField(
         default=False,
         help_text="Designates whether the user's email/account has been verified."
+    )
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-90.000000")),
+            MaxValueValidator(Decimal("90.000000")),
+        ],
+        help_text="User coordinate latitude (-90.0 to 90.0).",
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-180.000000")),
+            MaxValueValidator(Decimal("180.000000")),
+        ],
+        help_text="User coordinate longitude (-180.0 to 180.0).",
+    )
+    address = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Physical address or location description.",
     )
 
     class Meta:

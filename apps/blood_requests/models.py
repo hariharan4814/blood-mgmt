@@ -1,6 +1,7 @@
+from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 from apps.accounts.models import UserRole
@@ -106,3 +107,82 @@ class BloodRequest(models.Model):
 
         if self.hospital_staff and self.hospital_staff.role != UserRole.HOSPITAL_STAFF:
             raise ValidationError({"hospital_staff": "Only Hospital Staff users can raise blood requests."})
+
+
+class Hospital(models.Model):
+    """
+    Partner hospital facility entity.
+    Stores location, clinical capacity, and contact credentials.
+    """
+    name = models.CharField(
+        max_length=255,
+        help_text="Official name of the hospital facility."
+    )
+    address = models.TextField(
+        blank=True,
+        default="",
+        help_text="Physical street address of the hospital."
+    )
+    city = models.CharField(
+        max_length=100,
+        help_text="City where the hospital is situated."
+    )
+    state = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="State or province."
+    )
+    contact_number = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="Primary telephone / emergency desk contact number."
+    )
+    email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Official contact email address."
+    )
+    beds = models.PositiveIntegerField(
+        default=0,
+        help_text="Approved inpatient bed capacity."
+    )
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-90.000000")),
+            MaxValueValidator(Decimal("90.000000")),
+        ],
+        help_text="Latitude coordinate (-90.0 to 90.0)."
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal("-180.000000")),
+            MaxValueValidator(Decimal("180.000000")),
+        ],
+        help_text="Longitude coordinate (-180.0 to 180.0)."
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Designates whether the hospital is actively partnered on the platform."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "hospitals"
+        verbose_name = "Hospital"
+        verbose_name_plural = "Hospitals"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.city})"
+

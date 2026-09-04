@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Plus } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Loader2, MapPin, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -175,103 +175,112 @@ function RequestsPage() {
             : "Review clinical demand and approve reservations against available non-expired stock."
         }
         actions={
-          isHospital ? (
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="size-4" /> New request
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Raise a blood request</DialogTitle>
-                  <DialogDescription>
-                    Submit an emergency or scheduled blood request to a designated blood bank facility.
-                  </DialogDescription>
-                </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/app/map">
+                <MapPin className="size-4 mr-1.5" /> Nearby Resources
+              </Link>
+            </Button>
+            {isHospital ? (
+              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="size-4 mr-1.5" /> New request
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Raise a blood request</DialogTitle>
+                    <DialogDescription>
+                      Submit an emergency or scheduled blood request to a designated blood bank facility.
+                    </DialogDescription>
+                  </DialogHeader>
 
-                <form className="grid gap-4" onSubmit={handleCreateRequest}>
-                  <div className="grid gap-2">
-                    <Label htmlFor="target-bank">Target Blood Bank Facility</Label>
-                    <Select
-                      value={newRequest.bloodBankId}
-                      onValueChange={(val) => setNewRequest({ ...newRequest, bloodBankId: val })}
-                    >
-                      <SelectTrigger id="target-bank">
-                        <SelectValue placeholder="Select target facility" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bloodBanks.map((bank) => (
-                          <SelectItem key={bank.id} value={String(bank.id)}>
-                            {bank.name} ({bank.city}, {bank.state})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                  <form className="grid gap-4" onSubmit={handleCreateRequest}>
                     <div className="grid gap-2">
-                      <Label htmlFor="req-group">Blood group</Label>
+                      <Label htmlFor="target-bank">Target Blood Bank Facility</Label>
                       <Select
-                        value={newRequest.bloodGroup}
-                        onValueChange={(val) => setNewRequest({ ...newRequest, bloodGroup: val as BloodGroup })}
+                        value={newRequest.bloodBankId}
+                        onValueChange={(val) => setNewRequest({ ...newRequest, bloodBankId: val })}
                       >
-                        <SelectTrigger id="req-group">
-                          <SelectValue />
+                        <SelectTrigger id="target-bank">
+                          <SelectValue placeholder="Select target facility" />
                         </SelectTrigger>
                         <SelectContent>
-                          {BLOOD_GROUPS.map((g) => (
-                            <SelectItem key={g} value={g}>
-                              {g}
+                          {bloodBanks.map((bank) => (
+                            <SelectItem key={bank.id} value={String(bank.id)}>
+                              {bank.name} ({bank.city}, {bank.state})
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="req-units">Units Needed</Label>
-                      <Input
-                        id="req-units"
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={newRequest.units}
-                        onChange={(e) =>
-                          setNewRequest({ ...newRequest, units: Math.max(1, parseInt(e.target.value, 10) || 1) })
-                        }
-                        required
-                      />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="req-group">Blood group</Label>
+                        <Select
+                          value={newRequest.bloodGroup}
+                          onValueChange={(val) => setNewRequest({ ...newRequest, bloodGroup: val as BloodGroup })}
+                        >
+                          <SelectTrigger id="req-group">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BLOOD_GROUPS.map((g) => (
+                              <SelectItem key={g} value={g}>
+                                {g}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="req-units">Units Needed</Label>
+                        <Input
+                          id="req-units"
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={newRequest.units}
+                          onChange={(e) =>
+                            setNewRequest({ ...newRequest, units: Math.max(1, parseInt(e.target.value, 10) || 1) })
+                          }
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="req-urgency">Clinical Urgency</Label>
-                    <Select
-                      value={newRequest.urgency}
-                      onValueChange={(val) => setNewRequest({ ...newRequest, urgency: val as Urgency })}
-                    >
-                      <SelectTrigger id="req-urgency">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NORMAL">Normal</SelectItem>
-                        <SelectItem value="HIGH">High</SelectItem>
-                        <SelectItem value="CRITICAL">Critical / Emergency</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="req-urgency">Clinical Urgency</Label>
+                      <Select
+                        value={newRequest.urgency}
+                        onValueChange={(val) => setNewRequest({ ...newRequest, urgency: val as Urgency })}
+                      >
+                        <SelectTrigger id="req-urgency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NORMAL">Normal</SelectItem>
+                          <SelectItem value="HIGH">High</SelectItem>
+                          <SelectItem value="CRITICAL">Critical / Emergency</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  <DialogFooter className="pt-2">
-                    <Button type="submit" disabled={submitting}>
-                      {submitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-                      Submit request
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          ) : undefined
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={submitting}>
+                        {submitting ? <Loader2 className="size-4 animate-spin" /> : "Submit Request"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            ) : null}
+          </div>
         }
       />
 
@@ -305,7 +314,7 @@ function RequestsPage() {
                 <TableHead>Units</TableHead>
                 <TableHead>Urgency</TableHead>
                 <TableHead>Status</TableHead>
-                {isBloodBankAdmin ? <TableHead className="text-right">Action</TableHead> : null}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -321,29 +330,38 @@ function RequestsPage() {
                   <TableCell>
                     <StatusBadge status={r.status} />
                   </TableCell>
-                  {isBloodBankAdmin ? (
-                    <TableCell className="text-right">
-                      {r.status === "PENDING" ? (
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => setDecision({ id: r.id, status: "APPROVED" })}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setDecision({ id: r.id, status: "REJECTED" })}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Processed</span>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {(isHospital || isBloodBankAdmin) && (
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" asChild>
+                          <Link to="/app/map" search={{ blood_group: r.group, radius: 25 }}>
+                            <MapPin className="size-3.5 mr-1" /> Donors
+                          </Link>
+                        </Button>
                       )}
-                    </TableCell>
-                  ) : null}
+                      {isBloodBankAdmin && (
+                        r.status === "PENDING" ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => setDecision({ id: r.id, status: "APPROVED" })}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDecision({ id: r.id, status: "REJECTED" })}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Processed</span>
+                        )
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

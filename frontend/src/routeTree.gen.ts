@@ -28,6 +28,7 @@ import { Route as AppDonorsRouteImport } from './routes/app.donors'
 import { Route as AppEmailsRouteImport } from './routes/app.emails'
 import { Route as AppHospitalsRouteImport } from './routes/app.hospitals'
 import { Route as AppInventoryRouteImport } from './routes/app.inventory'
+import { Route as AppMapRouteImport } from './routes/app.map'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppRequestHistoryRouteImport } from './routes/app.request-history'
@@ -133,6 +134,11 @@ const AppInventoryRoute = AppInventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMapRoute = AppMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/app/emails': typeof AppEmailsRoute
   '/app/hospitals': typeof AppHospitalsRoute
   '/app/inventory': typeof AppInventoryRoute
+  '/app/map': typeof AppMapRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/request-history': typeof AppRequestHistoryRoute
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/app/emails': typeof AppEmailsRoute
   '/app/hospitals': typeof AppHospitalsRoute
   '/app/inventory': typeof AppInventoryRoute
+  '/app/map': typeof AppMapRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/request-history': typeof AppRequestHistoryRoute
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/app/emails': typeof AppEmailsRoute
   '/app/hospitals': typeof AppHospitalsRoute
   '/app/inventory': typeof AppInventoryRoute
+  '/app/map': typeof AppMapRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/request-history': typeof AppRequestHistoryRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/app/emails'
     | '/app/hospitals'
     | '/app/inventory'
+    | '/app/map'
     | '/app/notifications'
     | '/app/profile'
     | '/app/request-history'
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/app/emails'
     | '/app/hospitals'
     | '/app/inventory'
+    | '/app/map'
     | '/app/notifications'
     | '/app/profile'
     | '/app/request-history'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/app/emails'
     | '/app/hospitals'
     | '/app/inventory'
+    | '/app/map'
     | '/app/notifications'
     | '/app/profile'
     | '/app/request-history'
@@ -507,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInventoryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/map': {
+      id: '/app/map'
+      path: '/map'
+      fullPath: '/app/map'
+      preLoaderRoute: typeof AppMapRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/notifications': {
       id: '/app/notifications'
       path: '/notifications'
@@ -584,6 +603,7 @@ interface AppRouteChildren {
   AppEmailsRoute: typeof AppEmailsRoute
   AppHospitalsRoute: typeof AppHospitalsRoute
   AppInventoryRoute: typeof AppInventoryRoute
+  AppMapRoute: typeof AppMapRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppRequestHistoryRoute: typeof AppRequestHistoryRoute
@@ -607,6 +627,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEmailsRoute: AppEmailsRoute,
   AppHospitalsRoute: AppHospitalsRoute,
   AppInventoryRoute: AppInventoryRoute,
+  AppMapRoute: AppMapRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,
   AppRequestHistoryRoute: AppRequestHistoryRoute,

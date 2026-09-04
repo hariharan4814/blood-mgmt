@@ -28,6 +28,7 @@ const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   "/app/donation-history": ["SUPER_ADMIN", "DONOR"],
   "/app/notifications": ["SUPER_ADMIN", "BLOOD_BANK_ADMIN", "HOSPITAL_STAFF", "LAB_TECHNICIAN", "DONOR"],
   "/app/profile": ["DONOR", "SUPER_ADMIN", "BLOOD_BANK_ADMIN", "HOSPITAL_STAFF", "LAB_TECHNICIAN"],
+  "/app/map": ["DONOR", "SUPER_ADMIN", "BLOOD_BANK_ADMIN", "HOSPITAL_STAFF", "LAB_TECHNICIAN"],
   "/app/analytics": ["SUPER_ADMIN", "BLOOD_BANK_ADMIN"],
 };
 

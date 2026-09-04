@@ -68,7 +68,8 @@ class DonorModelAndEligibilityUnitTests(TestCase):
             )
 
     def test_all_valid_blood_groups(self):
-        valid_groups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        valid_groups = [choice[0] for choice in BloodGroup.choices]
+        self.assertEqual(len(valid_groups), 16)
         for idx, bg in enumerate(valid_groups):
             u = User.objects.create_user(
                 username=f"donor_bg_{idx}",
@@ -410,3 +411,30 @@ class DonorAPITests(TestCase):
         response = self.client.get(detail_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["username"], "donor_api_1")
+
+    def test_donor_profile_patch_subgroup_blood_group(self):
+        self.client.force_authenticate(user=self.donor_user)
+        # Create profile with A1+
+        res = self.client.patch(self.me_url, {
+            "blood_group": "A1+",
+            "date_of_birth": "1998-05-10",
+            "weight_kg": "65.00"
+        }, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["blood_group"], "A1+")
+
+        # Update profile to A2B+
+        res2 = self.client.patch(self.me_url, {"blood_group": "A2B+"}, format="json")
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertEqual(res2.data["blood_group"], "A2B+")
+
+        # Check GET /api/donors/me/
+        res3 = self.client.get(self.me_url)
+        self.assertEqual(res3.status_code, status.HTTP_200_OK)
+        self.assertEqual(res3.data["blood_group"], "A2B+")
+
+    def test_invalid_blood_group_rejected_on_donor_profile(self):
+        self.client.force_authenticate(user=self.donor_user)
+        res = self.client.patch(self.me_url, {"blood_group": "XYZ+"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("blood_group", res.data)

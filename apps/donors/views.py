@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResp
 
 from apps.accounts.models import UserRole
 from apps.accounts.permissions import IsDonor, IsSuperAdmin, HasRoles
-from .models import Donor
+from .models import Donor, BloodGroup
 from .serializers import (
     DonorProfileSerializer,
     DonorProfileInputSerializer,
@@ -80,9 +80,18 @@ class DonorMeProfileView(APIView):
         donor = Donor.objects.filter(user=request.user).first()
         is_new = donor is None
 
+        save_data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        if is_new:
+            if not save_data.get("blood_group"):
+                save_data["blood_group"] = BloodGroup.O_POSITIVE
+            if not save_data.get("date_of_birth"):
+                save_data["date_of_birth"] = "2000-01-01"
+            if not save_data.get("weight_kg"):
+                save_data["weight_kg"] = "60.00"
+
         serializer = DonorProfileInputSerializer(
             instance=donor,
-            data=request.data,
+            data=save_data,
             partial=partial if not is_new else False,
         )
         serializer.is_valid(raise_exception=True)

@@ -27,6 +27,14 @@ export const bloodStock: BloodStock[] = [
   { group: "AB-", units: 4, reserved: 0, testing: 1, threshold: 8 },
   { group: "O+", units: 55, reserved: 9, testing: 6, threshold: 25 },
   { group: "O-", units: 9, reserved: 3, testing: 2, threshold: 15 },
+  { group: "A1+", units: 25, reserved: 3, testing: 2, threshold: 15 },
+  { group: "A1-", units: 8, reserved: 1, testing: 1, threshold: 10 },
+  { group: "A2+", units: 15, reserved: 2, testing: 1, threshold: 10 },
+  { group: "A2-", units: 5, reserved: 0, testing: 1, threshold: 8 },
+  { group: "A1B+", units: 12, reserved: 2, testing: 1, threshold: 8 },
+  { group: "A1B-", units: 3, reserved: 0, testing: 1, threshold: 5 },
+  { group: "A2B+", units: 10, reserved: 1, testing: 1, threshold: 8 },
+  { group: "A2B-", units: 2, reserved: 0, testing: 1, threshold: 5 },
 ];
 
 export const users: User[] = [
@@ -594,8 +602,10 @@ export const auditLogs = [
 ];
 
 export const publicAvailability = BLOOD_GROUPS.map((group) => {
-  const stock = bloodStock.find((s) => s.group === group)!;
+  const stock = bloodStock.find((s) => s.group === group);
+  const units = stock ? stock.units : 0;
+  const threshold = stock ? stock.threshold : 10;
   const level: "HIGH" | "MODERATE" | "LOW" =
-    stock.units >= stock.threshold * 2 ? "HIGH" : stock.units >= stock.threshold ? "MODERATE" : "LOW";
-  return { group, units: stock.units, level };
+    units >= threshold * 2 ? "HIGH" : units >= threshold ? "MODERATE" : "LOW";
+  return { group, units, level };
 });

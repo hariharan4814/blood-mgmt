@@ -1,8 +1,12 @@
+from datetime import date
+from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.donors.models import BloodGroup, Donor
+from .models import UserRole
 from .validators import validate_phone_number, validate_profile_image
 
 User = get_user_model()
@@ -11,11 +15,18 @@ User = get_user_model()
 class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializer for retrieving and updating personal user profile details.
-    Restricts edits to safe fields only (first_name, last_name, email, phone).
+    Restricts edits to safe fields only (first_name, last_name, email, phone, blood_group).
     """
     full_name = serializers.CharField(read_only=True)
     role_display = serializers.CharField(source="get_role_display", read_only=True)
     profile_image_url = serializers.SerializerMethodField(read_only=True)
+    blood_group = serializers.ChoiceField(
+        choices=BloodGroup.choices,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="ABO and Rh blood group for the user's donor profile.",
+    )
 
     class Meta:
         model = User
@@ -29,6 +40,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "role",
             "role_display",
             "phone",
+            "blood_group",
+            "latitude",
+            "longitude",
+            "address",
             "profile_image",
             "profile_image_url",
             "is_verified",
@@ -95,6 +110,43 @@ class UserProfileSerializer(serializers.ModelSerializer):
         for field in protected_fields:
             attrs.pop(field, None)
         return attrs
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if hasattr(instance, "donor_profile") and instance.donor_profile:
+            ret["blood_group"] = instance.donor_profile.blood_group
+        else:
+            ret["blood_group"] = None
+        return ret
+
+    def update(self, instance, validated_data):
+        blood_group = validated_data.pop("blood_group", None)
+        user = super().update(instance, validated_data)
+        # Bidirectional sync: if user has a donor profile and coordinates/blood_group updated, sync to donor profile
+        if hasattr(user, "donor_profile") and user.donor_profile:
+            donor = user.donor_profile
+            updated_fields = []
+            if "latitude" in validated_data:
+                donor.latitude = validated_data["latitude"]
+                updated_fields.append("latitude")
+            if "longitude" in validated_data:
+                donor.longitude = validated_data["longitude"]
+                updated_fields.append("longitude")
+            if blood_group is not None:
+                donor.blood_group = blood_group
+                updated_fields.append("blood_group")
+            if updated_fields:
+                donor.save(update_fields=updated_fields)
+        elif blood_group:
+            Donor.objects.create(
+                user=user,
+                blood_group=blood_group,
+                date_of_birth=date(2000, 1, 1),
+                weight_kg=Decimal("60.00"),
+                latitude=user.latitude,
+                longitude=user.longitude,
+            )
+        return user
 
 
 class ProfileImageUploadSerializer(serializers.Serializer):

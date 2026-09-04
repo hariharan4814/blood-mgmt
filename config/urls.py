@@ -42,6 +42,9 @@ urlpatterns = [
     # Blood Request Management APIs
     path("api/blood-requests/", include("apps.blood_requests.urls")),
 
+    # Hospital Facilities APIs
+    path("api/hospitals/", include("apps.blood_requests.hospital_urls")),
+
     # Donation Camp Management APIs
     path("api/donation-camps/", include("apps.donations.camp_urls")),
 

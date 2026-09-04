@@ -10,14 +10,39 @@ from .services import calculate_donor_eligibility
 
 
 class BloodGroup(models.TextChoices):
+    # Standard ABO and Rh
+    O_POSITIVE = "O+", "O+"
+    O_NEGATIVE = "O-", "O-"
     A_POSITIVE = "A+", "A+"
     A_NEGATIVE = "A-", "A-"
     B_POSITIVE = "B+", "B+"
     B_NEGATIVE = "B-", "B-"
     AB_POSITIVE = "AB+", "AB+"
     AB_NEGATIVE = "AB-", "AB-"
-    O_POSITIVE = "O+", "O+"
-    O_NEGATIVE = "O-", "O-"
+
+    # Subgroups
+    A1_POSITIVE = "A1+", "A1+"
+    A1_NEGATIVE = "A1-", "A1-"
+    A2_POSITIVE = "A2+", "A2+"
+    A2_NEGATIVE = "A2-", "A2-"
+    A1B_POSITIVE = "A1B+", "A1B+"
+    A1B_NEGATIVE = "A1B-", "A1B-"
+    A2B_POSITIVE = "A2B+", "A2B+"
+    A2B_NEGATIVE = "A2B-", "A2B-"
+
+
+def normalize_blood_group(value: str) -> str:
+    """
+    Normalizes blood group strings by stripping whitespace and checking against canonical values.
+    Raises ValidationError if invalid.
+    """
+    if not value or not isinstance(value, str):
+        raise ValidationError(f"Invalid blood group: {value}")
+    cleaned = value.strip().upper()
+    valid_values = {choice[0] for choice in BloodGroup.choices}
+    if cleaned not in valid_values:
+        raise ValidationError(f"'{value}' is not a valid blood group. Must be one of: {', '.join(sorted(valid_values))}")
+    return cleaned
 
 
 class Donor(models.Model):

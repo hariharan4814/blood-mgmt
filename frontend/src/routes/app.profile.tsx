@@ -11,8 +11,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ROLE_LABELS } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BLOOD_GROUPS, ROLE_LABELS, type BloodGroup } from "@/lib/types";
 import { useAuth } from "@/providers/AuthProvider";
+import { ProfileLocationPicker } from "@/components/map/ProfileLocationPicker";
 import {
   profileService,
   type DonorDetails,
@@ -52,6 +60,7 @@ function ProfilePage() {
     lastName: "",
     email: "",
     phone: "",
+    bloodGroup: "" as BloodGroup | "",
     dob: "",
     weightKg: "",
   });
@@ -62,12 +71,14 @@ function ProfilePage() {
     try {
       const p = await profileService.getProfile();
       setProfile(p);
+      const initialBloodGroup = p.blood_group || "";
       setForm((prev) => ({
         ...prev,
         firstName: p.first_name || "",
         lastName: p.last_name || "",
         email: p.email || "",
         phone: p.phone || "",
+        bloodGroup: initialBloodGroup || prev.bloodGroup || (p.role === "DONOR" ? "O+" : ""),
       }));
 
       if (p.role === "DONOR") {
@@ -79,8 +90,14 @@ function ProfilePage() {
           setDonor(d);
           setForm((prev) => ({
             ...prev,
+            bloodGroup: d.blood_group || prev.bloodGroup || "O+",
             dob: d.date_of_birth || "",
             weightKg: d.weight_kg ? String(d.weight_kg) : "",
+          }));
+        } else {
+          setForm((prev) => ({
+            ...prev,
+            bloodGroup: prev.bloodGroup || "O+",
           }));
         }
         if (elig) {
@@ -104,19 +121,22 @@ function ProfilePage() {
     setError(null);
 
     try {
+      const selectedBloodGroup = form.bloodGroup || (profile?.role === "DONOR" ? "O+" : undefined);
       const updated = await profileService.updateProfile({
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim() || null,
+        blood_group: (selectedBloodGroup as BloodGroup) || undefined,
       });
 
       setProfile(updated);
 
       if (profile?.role === "DONOR") {
         const updatedDonor = await profileService.updateDonorDetails({
-          date_of_birth: form.dob || null,
-          weight_kg: form.weightKg ? parseFloat(form.weightKg) : null,
+          blood_group: (selectedBloodGroup || "O+") as BloodGroup,
+          date_of_birth: form.dob || "2000-01-01",
+          weight_kg: form.weightKg ? parseFloat(form.weightKg) : 60,
         });
         setDonor(updatedDonor);
 
@@ -171,6 +191,24 @@ function ProfilePage() {
       toast.error(err instanceof Error ? err.message : "Failed to delete image.");
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleSaveLocation = async (loc: { latitude: number; longitude: number; address: string }) => {
+    try {
+      const updated = await profileService.updateProfile({
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        address: loc.address,
+      });
+      setProfile(updated);
+      if (profile?.role === "DONOR" && donor) {
+        setDonor({ ...donor, latitude: loc.latitude, longitude: loc.longitude });
+      }
+      await refreshUser();
+      toast.success("Location saved successfully.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save location.");
     }
   };
 
@@ -304,6 +342,25 @@ function ProfilePage() {
                 {profile?.role === "DONOR" ? (
                   <>
                     <div className="grid gap-2">
+                      <Label htmlFor="bloodGroup">Blood group *</Label>
+                      <Select
+                        value={form.bloodGroup}
+                        onValueChange={(val) => setForm({ ...form, bloodGroup: val as BloodGroup })}
+                        disabled={saving}
+                      >
+                        <SelectTrigger id="bloodGroup">
+                          <SelectValue placeholder="Select blood group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BLOOD_GROUPS.map((bg) => (
+                            <SelectItem key={bg} value={bg}>
+                              {bg}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
                       <Label htmlFor="dob">Date of birth</Label>
                       <Input
                         id="dob"
@@ -336,6 +393,19 @@ function ProfilePage() {
                   </Button>
                 </div>
               </form>
+            </SectionCard>
+
+            {/* Location & Proximity Section */}
+            <SectionCard
+              title="Location & Proximity"
+              description="Drop a pin on OpenStreetMap or use browser GPS to find nearby blood resources."
+            >
+              <ProfileLocationPicker
+                initialLatitude={profile?.latitude}
+                initialLongitude={profile?.longitude}
+                initialAddress={profile?.address}
+                onSave={handleSaveLocation}
+              />
             </SectionCard>
           </div>
 

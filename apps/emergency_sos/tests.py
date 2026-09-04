@@ -14,6 +14,7 @@ from apps.blood_requests.models import BloodRequest, RequestStatus, RequestUrgen
 from apps.donors.models import BloodGroup, Donor
 from apps.emergency_sos.compatibility import (
     calculate_haversine_distance_km,
+    get_all_compatible_donor_blood_groups,
     get_compatible_donor_blood_groups,
     is_blood_compatible,
 )
@@ -211,6 +212,44 @@ class CompatibilityAndDistanceUnitTests(TestCase):
         self.assertTrue(is_blood_compatible(BloodGroup.O_NEGATIVE, BloodGroup.A_POSITIVE))
         self.assertFalse(is_blood_compatible(BloodGroup.B_POSITIVE, BloodGroup.A_POSITIVE))
         self.assertFalse(is_blood_compatible(BloodGroup.AB_POSITIVE, BloodGroup.O_POSITIVE))
+
+    def test_subgroup_compatibility_mapping(self):
+        # A1+ and A2+ belong to A+ family
+        self.assertTrue(is_blood_compatible(BloodGroup.A1_POSITIVE, BloodGroup.A_POSITIVE))
+        self.assertTrue(is_blood_compatible(BloodGroup.A2_POSITIVE, BloodGroup.A_POSITIVE))
+        # A1- can donate to A+ recipient
+        self.assertTrue(is_blood_compatible(BloodGroup.A1_NEGATIVE, BloodGroup.A_POSITIVE))
+        # A1B+ and A2B+ belong to AB+ family
+        self.assertTrue(is_blood_compatible(BloodGroup.A1B_POSITIVE, BloodGroup.AB_POSITIVE))
+        self.assertTrue(is_blood_compatible(BloodGroup.A2B_POSITIVE, BloodGroup.AB_POSITIVE))
+        # Universal donor O- can donate to A1+ and A2B+
+        self.assertTrue(is_blood_compatible(BloodGroup.O_NEGATIVE, BloodGroup.A1_POSITIVE))
+        self.assertTrue(is_blood_compatible(BloodGroup.O_NEGATIVE, BloodGroup.A2B_POSITIVE))
+        # Incompatible blood groups across families
+        self.assertFalse(is_blood_compatible(BloodGroup.A1_POSITIVE, BloodGroup.B_POSITIVE))
+        self.assertFalse(is_blood_compatible(BloodGroup.A2B_POSITIVE, BloodGroup.A_POSITIVE))
+        self.assertFalse(is_blood_compatible(BloodGroup.B_POSITIVE, BloodGroup.A1_POSITIVE))
+
+        # Expanded compatible groups includes subgroups
+        a1_pos_all = get_all_compatible_donor_blood_groups(BloodGroup.A1_POSITIVE)
+        self.assertIn(BloodGroup.A1_POSITIVE, a1_pos_all)
+        self.assertIn(BloodGroup.A2_POSITIVE, a1_pos_all)
+        self.assertIn(BloodGroup.A_POSITIVE, a1_pos_all)
+        self.assertIn(BloodGroup.A1_NEGATIVE, a1_pos_all)
+        self.assertIn(BloodGroup.A2_NEGATIVE, a1_pos_all)
+        self.assertIn(BloodGroup.A_NEGATIVE, a1_pos_all)
+        self.assertIn(BloodGroup.O_POSITIVE, a1_pos_all)
+        self.assertIn(BloodGroup.O_NEGATIVE, a1_pos_all)
+        self.assertNotIn(BloodGroup.B_POSITIVE, a1_pos_all)
+        self.assertNotIn(BloodGroup.AB_POSITIVE, a1_pos_all)
+
+    def test_subgroup_rh_compatibility(self):
+        # Rh+ cannot donate to Rh-
+        self.assertFalse(is_blood_compatible(BloodGroup.A1_POSITIVE, BloodGroup.A1_NEGATIVE))
+        self.assertFalse(is_blood_compatible(BloodGroup.A2_POSITIVE, BloodGroup.A_NEGATIVE))
+        # Rh- can donate to Rh+
+        self.assertTrue(is_blood_compatible(BloodGroup.A1_NEGATIVE, BloodGroup.A1_POSITIVE))
+        self.assertTrue(is_blood_compatible(BloodGroup.A2_NEGATIVE, BloodGroup.A_POSITIVE))
 
     def test_haversine_distance_calculation(self):
         # Distance between NYC (40.7128, -74.0060) and Philadelphia (39.9526, -75.1652) is ~130 km

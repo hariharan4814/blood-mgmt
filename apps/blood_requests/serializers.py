@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.donors.models import BloodGroup
 from apps.inventory.models import BloodBank, BloodUnit
-from .models import BloodRequest, RequestUrgency, RequestStatus
+from .models import BloodRequest, RequestUrgency, RequestStatus, Hospital
 
 
 class ReservedUnitBriefSerializer(serializers.ModelSerializer):
@@ -157,3 +157,28 @@ class BloodRequestRejectSerializer(serializers.Serializer):
         if not value or not value.strip():
             raise serializers.ValidationError("A non-empty rejection reason is required.")
         return value.strip()
+
+
+class HospitalSerializer(serializers.ModelSerializer):
+    """
+    Representation serializer for Hospital facility entities.
+    """
+    class Meta:
+        model = Hospital
+        fields = [
+            "id",
+            "name",
+            "address",
+            "city",
+            "state",
+            "contact_number",
+            "email",
+            "beds",
+            "latitude",
+            "longitude",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+

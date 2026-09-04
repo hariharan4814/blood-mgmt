@@ -103,6 +103,34 @@ class DonorProfileInputSerializer(serializers.ModelSerializer):
             )
         return attrs
 
+    def update(self, instance, validated_data):
+        donor = super().update(instance, validated_data)
+        user = donor.user
+        updated_user = False
+        if "latitude" in validated_data:
+            user.latitude = validated_data["latitude"]
+            updated_user = True
+        if "longitude" in validated_data:
+            user.longitude = validated_data["longitude"]
+            updated_user = True
+        if updated_user:
+            user.save(update_fields=["latitude", "longitude"])
+        return donor
+
+    def create(self, validated_data):
+        donor = super().create(validated_data)
+        user = donor.user
+        updated_user = False
+        if "latitude" in validated_data:
+            user.latitude = validated_data["latitude"]
+            updated_user = True
+        if "longitude" in validated_data:
+            user.longitude = validated_data["longitude"]
+            updated_user = True
+        if updated_user:
+            user.save(update_fields=["latitude", "longitude"])
+        return donor
+
 
 class EligibilityAgeCriteriaSerializer(serializers.Serializer):
     passed = serializers.BooleanField()

@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/common/PageHeader";
 import { BloodBankDashboard } from "@/components/dashboards/BloodBankDashboard";
@@ -39,6 +41,13 @@ function DashboardPage() {
       <PageHeader
         title={`Welcome back, ${user.name.split(" ")[0]}`}
         description={DESCRIPTIONS[user.role] ?? ""}
+        actions={
+          <Button variant="outline" asChild>
+            <Link to="/app/map">
+              <MapPin className="size-4 mr-1.5" /> Nearby Resources
+            </Link>
+          </Button>
+        }
       />
       <p className="text-xs text-muted-foreground">
         Signed in as {ROLE_LABELS[user.role]} · {user.organization}

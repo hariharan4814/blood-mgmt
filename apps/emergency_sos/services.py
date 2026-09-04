@@ -18,6 +18,7 @@ from apps.notifications.services import create_notification
 from .compatibility import (
     calculate_haversine_distance_km,
     get_compatible_donor_blood_groups,
+    get_all_compatible_donor_blood_groups,
 )
 from .models import SOSBroadcast, SOSRecipient, SOSStatus
 
@@ -60,7 +61,7 @@ def find_eligible_compatible_donors(
     Returns:
         List of eligible Donor model instances.
     """
-    compatible_groups = get_compatible_donor_blood_groups(blood_request.blood_group)
+    compatible_groups = get_all_compatible_donor_blood_groups(blood_request.blood_group)
 
     # Query active donor profiles
     candidate_donors = (

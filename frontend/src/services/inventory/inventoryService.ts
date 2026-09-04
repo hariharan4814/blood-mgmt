@@ -64,17 +64,11 @@ export const inventoryService = {
       const response = await request<BackendBankSummary[] | BackendBankSummary>("/api/inventory/summary/");
       const summaries = Array.isArray(response) ? response : [response];
 
-      // Initialize map for all 8 standard blood groups
-      const groupStockMap: Record<BloodGroup, number> = {
-        "A+": 0,
-        "A-": 0,
-        "B+": 0,
-        "B-": 0,
-        "AB+": 0,
-        "AB-": 0,
-        "O+": 0,
-        "O-": 0,
-      };
+      // Initialize map for all supported blood groups
+      const groupStockMap = BLOOD_GROUPS.reduce((acc, bg) => {
+        acc[bg] = 0;
+        return acc;
+      }, {} as Record<BloodGroup, number>);
 
       for (const summary of summaries) {
         if (summary && Array.isArray(summary.inventory)) {

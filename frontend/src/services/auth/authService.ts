@@ -128,13 +128,14 @@ export const authService = {
       generatedUsername = emailPrefix || `user_${Date.now()}`;
     }
 
-    const body = {
+    const body: Record<string, unknown> = {
       username: generatedUsername,
       email: payload.email.trim().toLowerCase(),
       password: payload.password,
       password_confirm: payload.password_confirm || payload.password,
       role: payload.role,
       phone: payload.phone?.trim() || "",
+      ...(payload.blood_group ? { blood_group: payload.blood_group } : {}),
     };
 
     const response = await request<{ message: string; user: Record<string, unknown> }>("/api/auth/register/", {

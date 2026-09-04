@@ -11,6 +11,10 @@ export interface UserProfile {
   role: Role;
   role_display: string;
   phone: string | null;
+  blood_group?: BloodGroup | null;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
   profile_image: string | null;
   profile_image_url: string | null;
   is_verified: boolean;
@@ -64,6 +68,10 @@ export const profileService = {
     last_name?: string;
     email?: string;
     phone?: string | null;
+    blood_group?: BloodGroup | null | undefined;
+    latitude?: number | null;
+    longitude?: number | null;
+    address?: string | null;
   }): Promise<UserProfile> => {
     return request<UserProfile>("/api/profile/", {
       method: "PATCH",

@@ -5,12 +5,13 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
 
 from apps.accounts.models import UserRole
-from .models import BloodRequest
+from .models import BloodRequest, Hospital
 from .permissions import CanManageOrViewBloodRequests, IsAssignedBankAdminForAction
 from .serializers import (
     BloodRequestSerializer,
     BloodRequestCreateSerializer,
     BloodRequestRejectSerializer,
+    HospitalSerializer,
 )
 from .services import approve_blood_request, reject_blood_request
 
@@ -176,3 +177,63 @@ class BloodRequestRejectView(APIView):
 
         output_serializer = BloodRequestSerializer(rejected_request)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="List Hospitals",
+        description="Retrieve all active partner hospitals.",
+        responses={200: HospitalSerializer(many=True)},
+        tags=["Hospitals"],
+    ),
+    post=extend_schema(
+        summary="Create Hospital",
+        description="Register a new partner hospital. Restricted to Super Admin.",
+        request=HospitalSerializer,
+        responses={201: HospitalSerializer},
+        tags=["Hospitals"],
+    ),
+)
+class HospitalListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = HospitalSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if not (user and user.is_authenticated):
+            return Hospital.objects.none()
+        if user.is_super_admin:
+            return Hospital.objects.all().order_by("name")
+        return Hospital.objects.filter(is_active=True).order_by("name")
+
+    def perform_create(self, serializer):
+        if not (self.request.user and self.request.user.is_super_admin):
+            raise permissions.PermissionDenied("Only Super Administrators can create hospital records.")
+        serializer.save()
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Retrieve Hospital",
+        description="Retrieve detailed information for a partner hospital.",
+        responses={200: HospitalSerializer},
+        tags=["Hospitals"],
+    ),
+    patch=extend_schema(
+        summary="Update Hospital",
+        description="Update hospital facility details. Restricted to Super Admin.",
+        request=HospitalSerializer,
+        responses={200: HospitalSerializer},
+        tags=["Hospitals"],
+    ),
+)
+class HospitalDetailView(generics.RetrieveUpdateAPIView):
+    queryset = Hospital.objects.all()
+    serializer_class = HospitalSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if request.method in ["PUT", "PATCH", "DELETE"] and not (request.user and request.user.is_super_admin):
+            raise permissions.PermissionDenied("Only Super Administrators can modify hospital records.")
+

@@ -1,7 +1,10 @@
+from datetime import date
+from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from apps.donors.models import BloodGroup, Donor
 from .models import UserRole
 
 User = get_user_model()
@@ -53,6 +56,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         default=UserRole.DONOR,
         help_text="Public registration role (DONOR or HOSPITAL_STAFF only)."
     )
+    blood_group = serializers.ChoiceField(
+        choices=BloodGroup.choices,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="ABO and Rh blood group (used when registering as DONOR)."
+    )
 
     class Meta:
         model = User
@@ -64,6 +74,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "password_confirm",
             "role",
             "phone",
+            "blood_group",
         ]
         read_only_fields = ["id"]
 
@@ -106,11 +117,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop("password_confirm")
         password = validated_data.pop("password")
+        blood_group = validated_data.pop("blood_group", None)
         user = User.objects.create_user(
             password=password,
             is_verified=False,
             **validated_data
         )
+        if user.role == UserRole.DONOR:
+            bg = blood_group if blood_group else BloodGroup.O_POSITIVE
+            Donor.objects.create(
+                user=user,
+                blood_group=bg,
+                date_of_birth=date(2000, 1, 1),
+                weight_kg=Decimal("60.00"),
+            )
         return user
 
 
